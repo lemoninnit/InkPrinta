@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { motion, useMotionValue, useSpring } from 'framer-motion';
 
 export default function CustomCursor() {
-  const [isHovering, setIsHovering] = useState(false);
+  // Directly bind cursor coordinates and styles to MotionValues to completely bypass React renders
   const cursorX = useMotionValue(-100);
   const cursorY = useMotionValue(-100);
+  
+  const cursorScale = useMotionValue(1);
+  const cursorOpacity = useMotionValue(0.6);
 
-  const springConfig = { damping: 25, stiffness: 300, mass: 0.5 };
+  // High-performance physics springs
+  const springConfig = { damping: 25, stiffness: 400, mass: 0.1 };
   const cursorXSpring = useSpring(cursorX, springConfig);
   const cursorYSpring = useSpring(cursorY, springConfig);
+  
+  const scaleSpring = useSpring(cursorScale, { damping: 20, stiffness: 300 });
+  const opacitySpring = useSpring(cursorOpacity, { damping: 20, stiffness: 300 });
 
   useEffect(() => {
     const moveCursor = (e) => {
@@ -17,18 +24,20 @@ export default function CustomCursor() {
     };
 
     const handleMouseOver = (e) => {
-      // Scale up the cursor when hovering over interactive elements or headers
       if (
         e.target.tagName.toLowerCase() === 'h1' ||
+        e.target.tagName.toLowerCase() === 'h2' ||
         e.target.tagName.toLowerCase() === 'h3' ||
         e.target.tagName.toLowerCase() === 'a' ||
         e.target.tagName.toLowerCase() === 'button' ||
         e.target.closest('div.group') ||
         e.target.closest('header')
       ) {
-        setIsHovering(true);
+        cursorScale.set(3);
+        cursorOpacity.set(0.9);
       } else {
-        setIsHovering(false);
+        cursorScale.set(1);
+        cursorOpacity.set(0.6);
       }
     };
 
@@ -39,20 +48,17 @@ export default function CustomCursor() {
       window.removeEventListener('mousemove', moveCursor);
       window.removeEventListener('mouseover', handleMouseOver);
     };
-  }, [cursorX, cursorY]);
+  }, [cursorX, cursorY, cursorScale, cursorOpacity]);
 
   return (
     <motion.div
-      className="fixed top-0 left-0 w-6 h-6 rounded-full bg-white mix-blend-difference pointer-events-none z-[100] flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.8)]"
+      className="fixed top-0 left-0 w-6 h-6 rounded-full pointer-events-none z-[100] border-2 border-white mix-blend-difference bg-white"
       style={{
         x: cursorXSpring,
         y: cursorYSpring,
+        scale: scaleSpring,
+        opacity: opacitySpring,
       }}
-      animate={{
-        scale: isHovering ? 3 : 1,
-        opacity: isHovering ? 0.8 : 0.6
-      }}
-      transition={{ duration: 0.2 }}
     />
   );
 }
