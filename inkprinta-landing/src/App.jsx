@@ -1,23 +1,11 @@
-import { useRef } from 'react';
-import { useScroll } from 'framer-motion';
-import WebGLBackground from './components/WebGLBackground';
-import OverlayUI from './components/OverlayUI';
-import Navbar from './components/Navbar';
-import CustomCursor from './components/CustomCursor';
+import HeroOverlay from './components/sections/HeroOverlay';
+import Navbar from './components/layout/Navbar';
 
 function App() {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
-
   return (
-    <main ref={containerRef} className="relative min-h-[400vh] bg-slate-50 overflow-x-hidden selection:bg-cyan-200/50 font-sans cursor-none">
-      <CustomCursor />
+    <main className="min-h-screen w-full bg-white font-sans flex flex-col relative overflow-hidden selection:bg-cyan-100">
       <Navbar />
-      <WebGLBackground scrollYProgress={scrollYProgress} />
-      <OverlayUI />
+      <HeroOverlay />
     </main>
   );
 }
