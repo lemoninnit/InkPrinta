@@ -6,12 +6,19 @@ export default function HeroOverlay() {
   return (
     <div className="flex-1 w-full flex flex-col bg-white relative">
       
-      {/* Background ambient gradients - lowered opacity to ensure text contrast */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none opacity-[0.15]">
-        <div className="absolute top-[30%] left-[20%] w-[500px] h-[500px] bg-cyan-400 rounded-full blur-[120px]" />
-        <div className="absolute top-[30%] right-[20%] w-[500px] h-[500px] bg-fuchsia-400 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[10%] left-[40%] w-[600px] h-[600px] bg-yellow-300 rounded-full blur-[150px]" />
-      </div>
+      {/* Magenta Orb Grid Background */}
+      <div
+        className="absolute inset-0 z-0 pointer-events-none"
+        style={{
+          background: "white",
+          backgroundImage: `
+            linear-gradient(to right, rgba(71,85,105,0.15) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(71,85,105,0.15) 1px, transparent 1px),
+            radial-gradient(circle at 50% 60%, rgba(236,72,153,0.15) 0%, rgba(168,85,247,0.05) 40%, transparent 70%)
+          `,
+          backgroundSize: "40px 40px, 40px 40px, 100% 100%",
+        }}
+      />
 
       <div className="relative z-10 flex flex-col w-full h-full">
         
