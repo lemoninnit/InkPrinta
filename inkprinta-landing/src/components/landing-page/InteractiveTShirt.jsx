@@ -17,11 +17,10 @@ function Loader() {
 function TShirt() {
   const { scene } = useGLTF('/tshirt.glb');
   const ref = useRef();
-  
+
   useEffect(() => {
     if (!scene) return;
-    
-    // Bulletproof material override
+
     const robustMaterial = new THREE.MeshStandardMaterial({
       color: '#ffffff',
       roughness: 0.6,
@@ -40,14 +39,11 @@ function TShirt() {
   }, [scene]);
 
   useFrame((state, delta) => {
-    // Only respond to mouse movement if the tab is focused
     if (!ref.current || !document.hasFocus()) return;
-    
-    // Calculate target rotations based purely on mouse coordinates
-    const targetY = (state.pointer.x * Math.PI) / 4; 
+
+    const targetY = (state.pointer.x * Math.PI) / 4;
     const targetX = -(state.pointer.y * Math.PI) / 8;
-    
-    // Smoothly interpolate to the target cursor rotation
+
     ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, targetY, 4 * delta);
     ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, targetX, 4 * delta);
   });
@@ -55,7 +51,7 @@ function TShirt() {
   return (
     <Float speed={1.5} rotationIntensity={0} floatIntensity={1.2}>
       <Center position={[0, -0.5, 0]}>
-         <primitive ref={ref} object={scene} scale={5.5} />
+        <primitive ref={ref} object={scene} scale={5.5} />
       </Center>
     </Float>
   );
@@ -68,7 +64,7 @@ export default function InteractiveTShirt() {
         <ambientLight intensity={1.5} />
         <directionalLight position={[10, 10, 5]} intensity={2.5} color="#ffffff" castShadow />
         <directionalLight position={[-10, 5, -5]} intensity={1.5} color="#e0f2fe" />
-        
+
         <Environment preset="city" />
 
         <Suspense fallback={<Loader />}>
