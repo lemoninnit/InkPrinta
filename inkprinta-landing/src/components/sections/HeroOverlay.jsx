@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import logo from '../../assets/images/inkprintalogo.jpg';
 import InteractiveTShirt from '../3d/InteractiveTShirt';
 
 export default function HeroOverlay() {
+  const navigate = useNavigate();
+
   return (
     <div className="flex-1 w-full flex flex-col bg-white relative">
       
@@ -31,7 +34,10 @@ export default function HeroOverlay() {
              Craft bespoke t-shirts, hoodies, and more with our high-end custom printing service for brands and businesses.
            </p>
            <div className="flex flex-col sm:flex-row items-center gap-4">
-             <button className="w-full sm:w-auto px-6 py-3 bg-cyan-200 hover:bg-cyan-300 text-slate-900 rounded-full font-bold transition-all text-xs uppercase tracking-widest shadow-sm">
+             <button 
+               onClick={() => navigate('/design')}
+               className="w-full sm:w-auto px-6 py-3 bg-cyan-200 hover:bg-cyan-300 text-slate-900 rounded-full font-bold transition-all text-xs uppercase tracking-widest shadow-sm"
+             >
                Design Yours Now
              </button>
              <button className="w-full sm:w-auto px-6 py-3 text-slate-700 font-bold hover:text-slate-900 underline underline-offset-4 text-xs uppercase tracking-widest transition-all">
