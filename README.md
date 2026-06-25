@@ -16,7 +16,4 @@ Open your browser and navigate to the localhost port provided in your terminal (
 
 ## Deployment (Render)
 
-This project is configured and optimized for free deployment on [Render](https://render.com/). 
-When creating your **Static Site** web service on Render, use the following settings:
-- **Build Command:** `npm install && npm run build`
-- **Publish Directory:** `dist`
+This project is configured and optimized for free deployment on [https://inkprinta.onrender.com](https://inkprinta.onrender.com).
