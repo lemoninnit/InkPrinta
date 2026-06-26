@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Textbox } from 'fabric';
 import { hexToHsl, hsvToHsl, hslToHex } from '../utils/calculations.js';
-import { styleTextboxControls } from '../utils/helpers.js';
+import { styleTextboxControls, initializeImageObject } from '../utils/helpers.js';
 
-export function useTextTools(fabricRef) {
+export function useTextTools(fabricRef, saveStateToHistory) {
   const [textInput, setTextInput] = useState('Your Text');
   const [fontFamily, setFontFamily] = useState('sans-serif');
   const [fontSize, setFontSize] = useState(36);
@@ -66,6 +66,7 @@ export function useTextTools(fabricRef) {
     activeObj.setCoords();
     fabricRef.current.renderAll();
     setCoords(activeObj.getBoundingRect(true));
+    saveStateToHistory?.();
   };
 
   const handleFontSizeChange = (newSize) => {
@@ -168,6 +169,7 @@ export function useTextTools(fabricRef) {
     });
     fabricRef.current.renderAll();
     setCoords(activeObj.getBoundingRect(true));
+    saveStateToHistory?.();
   };
 
   const handleDuplicate = async () => {
@@ -176,12 +178,16 @@ export function useTextTools(fabricRef) {
     if (!activeObj) return;
 
     try {
-      const cloned = await activeObj.clone();
+      const cloned = await activeObj.clone(['rx', 'ry']);
       cloned.set({
         left: activeObj.left + 24,
         top: activeObj.top + 24
       });
-      styleTextboxControls(cloned);
+      if (cloned.type === 'image') {
+        initializeImageObject(cloned);
+      } else {
+        styleTextboxControls(cloned);
+      }
       fabricRef.current.add(cloned);
       fabricRef.current.setActiveObject(cloned);
       fabricRef.current.renderAll();
@@ -207,9 +213,13 @@ export function useTextTools(fabricRef) {
   const handleAddText = (onComplete) => {
     if (!fabricRef.current) return;
 
+    const canvas = fabricRef.current;
+    const centerX = canvas.getWidth() / 2;
+    const centerY = canvas.getHeight() / 2;
+
     const textObj = new Textbox(textInput, {
-      left: fabricRef.current.width / 2,
-      top: fabricRef.current.height / 2,
+      left: centerX,
+      top: centerY,
       fontFamily,
       fontSize,
       fill: textColor,

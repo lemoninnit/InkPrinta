@@ -45,7 +45,7 @@ const STUDIO_TABS = [
   }
 ];
 
-export default function Footer({ activeTab, showProductPanel, showTextPanel, onTabClick }) {
+export default function Footer({ activeTab, showProductPanel, showTextPanel, showImagePanel, onTabClick }) {
   return (
     <footer className="w-full bg-white/90 backdrop-blur-xl border-t border-slate-100 px-8 py-3.5 flex items-center justify-between relative shadow-[0_-8px_30px_rgba(0,0,0,0.02)] z-40">
       <div className="flex-1 flex justify-center items-center gap-6 md:gap-12">
@@ -53,7 +53,8 @@ export default function Footer({ activeTab, showProductPanel, showTextPanel, onT
           const isActive = activeTab === tab.id;
           const isProduct = tab.id === 'Product';
           const isText = tab.id === 'Text';
-          const isHighlighted = isActive || (isProduct && showProductPanel) || (isText && showTextPanel);
+          const isImage = tab.id === 'Image';
+          const isHighlighted = isActive || (isProduct && showProductPanel) || (isText && showTextPanel) || (isImage && showImagePanel);
 
           return (
             <button

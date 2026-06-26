@@ -102,3 +102,68 @@ export const drawSnapGuides = (ctx, currentProduct, currentZoom, showVertical, s
 
   ctx.restore();
 };
+
+export const initializeImageObject = (imgObj) => {
+  styleTextboxControls(imgObj);
+  
+  if (!imgObj._originalRender) {
+    imgObj._originalRender = imgObj._render;
+  }
+  
+  imgObj._render = function(ctx) {
+    const rx = this.rx || 0;
+    const ry = this.ry || 0;
+    const w = this.width;
+    const h = this.height;
+    const x = -w / 2;
+    const y = -h / 2;
+
+    ctx.save();
+    if (rx > 0 || ry > 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + rx, y);
+      ctx.lineTo(x + w - rx, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + ry);
+      ctx.lineTo(x + w, y + h - ry);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
+      ctx.lineTo(x + rx, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - ry);
+      ctx.lineTo(x, y + ry);
+      ctx.quadraticCurveTo(x, y, x + rx, y);
+      ctx.closePath();
+      ctx.clip();
+    }
+    
+    // Draw the image content without rectangular stroke
+    const tempStroke = this.stroke;
+    this.stroke = null;
+    this._originalRender(ctx);
+    this.stroke = tempStroke;
+    
+    ctx.restore();
+
+    // Draw the rounded stroke on top (unclipped)
+    if (this.stroke && this.strokeWidth > 0) {
+      ctx.save();
+      ctx.strokeStyle = this.stroke;
+      ctx.lineWidth = this.strokeWidth;
+      if (this.strokeDashArray) {
+        ctx.setLineDash(this.strokeDashArray);
+      }
+      
+      ctx.beginPath();
+      ctx.moveTo(x + rx, y);
+      ctx.lineTo(x + w - rx, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + ry);
+      ctx.lineTo(x + w, y + h - ry);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rx, y + h);
+      ctx.lineTo(x + rx, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - ry);
+      ctx.lineTo(x, y + ry);
+      ctx.quadraticCurveTo(x, y, x + rx, y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
+};

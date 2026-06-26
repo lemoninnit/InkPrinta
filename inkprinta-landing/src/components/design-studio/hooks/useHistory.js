@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { styleTextboxControls } from '../utils/helpers.js';
+import { styleTextboxControls, initializeImageObject } from '../utils/helpers.js';
 
 export function useHistory(fabricRef) {
   const undoStackRef = useRef([]);
@@ -8,7 +8,7 @@ export function useHistory(fabricRef) {
 
   const saveStateToHistory = () => {
     if (!fabricRef.current || isHandlingHistoryRef.current) return;
-    const json = fabricRef.current.toJSON();
+    const json = fabricRef.current.toJSON(['rx', 'ry']);
     undoStackRef.current.push(JSON.stringify(json));
     if (undoStackRef.current.length > 50) {
       undoStackRef.current.shift();
@@ -27,6 +27,8 @@ export function useHistory(fabricRef) {
       fabricRef.current.forEachObject((obj) => {
         if (obj.type === 'textbox') {
           styleTextboxControls(obj);
+        } else if (obj.type === 'image') {
+          initializeImageObject(obj);
         }
       });
       fabricRef.current.renderAll();

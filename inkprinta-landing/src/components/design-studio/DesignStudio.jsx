@@ -3,14 +3,17 @@ import { PRODUCTS } from './utils/constants.js';
 import { useZoom } from './hooks/useZoom.js';
 import { useHistory } from './hooks/useHistory.js';
 import { useTextTools } from './hooks/useTextTools.js';
+import { useImageTools } from './hooks/useImageTools.js';
 import { useCanvas } from './hooks/useCanvas.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
+import { styleTextboxControls, initializeImageObject } from './utils/helpers.js';
 import Header from './layout/Header.jsx';
 import Footer from './layout/Footer.jsx';
 import StickyHeaderControls from './controls/StickyHeaderControls.jsx';
 import CanvasArea from './canvas/CanvasArea.jsx';
 import ProductModal from './modals/ProductModal.jsx';
 import TextModal from './modals/TextModal.jsx';
+import ImageModal from './modals/ImageModal.jsx';
 
 export default function DesignStudio() {
   const canvasRef = useRef(null);
@@ -19,10 +22,10 @@ export default function DesignStudio() {
   const [activeTab, setActiveTab] = useState('Product');
   const [showProductPanel, setShowProductPanel] = useState(false);
   const [showTextPanel, setShowTextPanel] = useState(false);
+  const [showImagePanel, setShowImagePanel] = useState(false);
   const [currentProduct, setCurrentProduct] = useState(PRODUCTS[0]);
 
   const { zoom, viewportRef, zoomOut, zoomIn, resetZoom } = useZoom();
-  const textTools = useTextTools(fabricRef);
 
   const {
     undoStackRef,
@@ -33,10 +36,57 @@ export default function DesignStudio() {
     handleRedo
   } = useHistory(fabricRef);
 
+  const textTools = useTextTools(fabricRef, saveStateToHistory);
+  const imageTools = useImageTools(fabricRef, saveStateToHistory);
+
+  const clipboardRef = useRef(null);
+
+  const handleCopy = async () => {
+    if (!fabricRef.current) return;
+    const activeObj = fabricRef.current.getActiveObject();
+    if (!activeObj) return;
+    try {
+      const cloned = await activeObj.clone(['rx', 'ry']);
+      clipboardRef.current = cloned;
+    } catch (err) {
+      console.error('Failed to copy object:', err);
+    }
+  };
+
+  const handlePaste = async () => {
+    if (!fabricRef.current || !clipboardRef.current) return;
+    const canvas = fabricRef.current;
+    try {
+      const clonedObj = await clipboardRef.current.clone(['rx', 'ry']);
+      canvas.discardActiveObject();
+      clonedObj.set({
+        left: clonedObj.left + 24,
+        top: clonedObj.top + 24,
+        evented: true
+      });
+      if (clonedObj.type === 'image') {
+        initializeImageObject(clonedObj);
+      } else {
+        styleTextboxControls(clonedObj);
+      }
+      canvas.add(clonedObj);
+      canvas.setActiveObject(clonedObj);
+      canvas.renderAll();
+      saveStateToHistory();
+    } catch (err) {
+      console.error('Failed to paste object:', err);
+    }
+  };
+
   const syncSelectionAfterHistory = () => {
     const activeObj = fabricRef.current?.getActiveObject();
     textTools.setActiveObject(activeObj || null);
     textTools.setCoords(activeObj ? activeObj.getBoundingRect(true) : null);
+    if (activeObj && activeObj.type === 'image') {
+      imageTools.syncImageFromObject(activeObj);
+    } else {
+      imageTools.resetPopovers();
+    }
   };
 
   const onUndo = () => handleUndo(syncSelectionAfterHistory);
@@ -49,32 +99,47 @@ export default function DesignStudio() {
     zoom,
     saveStateToHistory,
     isHandlingHistoryRef,
-    setActiveObject: textTools.setActiveObject,
+    setActiveObject: (obj) => {
+      textTools.setActiveObject(obj);
+      if (!obj) {
+        imageTools.resetPopovers();
+      }
+    },
     setCoords: textTools.setCoords,
     setIsLocked: textTools.setIsLocked,
     setIsRotating: textTools.setIsRotating,
     setRotationAngle: textTools.setRotationAngle,
-    syncTextFromObject: textTools.syncTextFromObject
+    syncTextFromObject: textTools.syncTextFromObject,
+    syncImageFromObject: imageTools.syncImageFromObject
   });
 
   useKeyboardShortcuts({
     fabricRef,
     handleUndo: onUndo,
     handleRedo: onRedo,
-    handleDelete: textTools.handleDelete
+    handleDelete: textTools.handleDelete,
+    handleCopy,
+    handlePaste
   });
 
   const handleTabClick = (tabId) => {
     if (tabId === 'Product') {
       setShowProductPanel((prev) => !prev);
       setShowTextPanel(false);
+      setShowImagePanel(false);
     } else if (tabId === 'Text') {
       setShowTextPanel((prev) => !prev);
       setShowProductPanel(false);
+      setShowImagePanel(false);
+    } else if (tabId === 'Image') {
+      setShowImagePanel((prev) => !prev);
+      setShowProductPanel(false);
+      setShowTextPanel(false);
     } else {
       setActiveTab(tabId);
       setShowProductPanel(false);
       setShowTextPanel(false);
+      setShowImagePanel(false);
     }
   };
 
@@ -97,6 +162,7 @@ export default function DesignStudio() {
       >
         <StickyHeaderControls
           textTools={textTools}
+          imageTools={imageTools}
           undoStackRef={undoStackRef}
           redoStackRef={redoStackRef}
           onUndo={onUndo}
@@ -116,9 +182,11 @@ export default function DesignStudio() {
           isRotating={textTools.isRotating}
           rotationAngle={textTools.rotationAngle}
           isLocked={textTools.isLocked}
+          isAdjusting={imageTools.isSliding}
           onToggleLock={textTools.handleToggleLock}
           onDuplicate={textTools.handleDuplicate}
           onDelete={textTools.handleDelete}
+          imageTools={imageTools}
         />
       </main>
 
@@ -126,6 +194,7 @@ export default function DesignStudio() {
         activeTab={activeTab}
         showProductPanel={showProductPanel}
         showTextPanel={showTextPanel}
+        showImagePanel={showImagePanel}
         onTabClick={handleTabClick}
       />
 
@@ -156,6 +225,12 @@ export default function DesignStudio() {
         setShowBottomFontDropdown={textTools.setShowBottomFontDropdown}
         onAddText={handleAddText}
         onColorSquareMouseDown={textTools.handleColorSquareMouseDown}
+      />
+
+      <ImageModal
+        isOpen={showImagePanel}
+        onClose={() => setShowImagePanel(false)}
+        fabricRef={fabricRef}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Canvas } from 'fabric';
 import { SNAP_THRESHOLD } from '../utils/constants.js';
-import { styleTextboxControls, drawSnapGuides } from '../utils/helpers.js';
+import { styleTextboxControls, drawSnapGuides, initializeImageObject } from '../utils/helpers.js';
 
 export function useCanvas({
   canvasRef,
@@ -15,10 +15,13 @@ export function useCanvas({
   setIsLocked,
   setIsRotating,
   setRotationAngle,
-  syncTextFromObject
+  syncTextFromObject,
+  syncImageFromObject
 }) {
   const showVerticalGuideRef = useRef(false);
   const showHorizontalGuideRef = useRef(false);
+  const dragStartPosRef = useRef(null);
+  const hasDuplicatedOnAltDragRef = useRef(false);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -42,6 +45,8 @@ export function useCanvas({
         setIsLocked(activeObj.lockMovementX || false);
         if (activeObj.type === 'textbox') {
           syncTextFromObject(activeObj);
+        } else if (activeObj.type === 'image') {
+          syncImageFromObject(activeObj);
         }
       } else {
         setActiveObject(null);
@@ -87,9 +92,41 @@ export function useCanvas({
       }
     };
 
-    const handleObjectMoving = (e) => {
+    const handleMouseDown = (e) => {
+      const activeObj = canvas.getActiveObject();
+      if (activeObj) {
+        dragStartPosRef.current = { left: activeObj.left, top: activeObj.top };
+      } else {
+        dragStartPosRef.current = null;
+      }
+      hasDuplicatedOnAltDragRef.current = false;
+    };
+
+    const handleObjectMoving = async (e) => {
       const activeObj = e.target || canvas.getActiveObject();
       if (!activeObj) return;
+
+      // Handle Alt + Drag copy-paste
+      if (e.e && e.e.altKey && !hasDuplicatedOnAltDragRef.current && dragStartPosRef.current) {
+        hasDuplicatedOnAltDragRef.current = true;
+        try {
+          const cloned = await activeObj.clone(['rx', 'ry']);
+          cloned.set({
+            left: dragStartPosRef.current.left,
+            top: dragStartPosRef.current.top
+          });
+          if (cloned.type === 'image') {
+            initializeImageObject(cloned);
+          } else {
+            styleTextboxControls(cloned);
+          }
+          canvas.add(cloned);
+          canvas.renderAll();
+          saveStateToHistory();
+        } catch (err) {
+          console.error('Alt-drag cloning failed:', err);
+        }
+      }
 
       const centerX = currentProduct.printWidth / 2;
       const centerY = currentProduct.printHeight / 2;
@@ -163,7 +200,11 @@ export function useCanvas({
       );
     };
 
-    const handleObjectAdded = () => {
+    const handleObjectAdded = (e) => {
+      const obj = e.target;
+      if (obj && obj.type === 'image') {
+        initializeImageObject(obj);
+      }
       if (!isHandlingHistoryRef.current) saveStateToHistory();
     };
 
@@ -174,6 +215,7 @@ export function useCanvas({
     canvas.on('selection:created', updateSelection);
     canvas.on('selection:updated', updateSelection);
     canvas.on('selection:cleared', handleSelectionCleared);
+    canvas.on('mouse:down', handleMouseDown);
     canvas.on('object:moving', handleObjectMoving);
     canvas.on('object:scaling', updateSelection);
     canvas.on('object:rotating', handleObjectRotating);

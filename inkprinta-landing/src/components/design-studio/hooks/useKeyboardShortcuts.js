@@ -1,6 +1,13 @@
 import { useEffect } from 'react';
 
-export function useKeyboardShortcuts({ fabricRef, handleUndo, handleRedo, handleDelete }) {
+export function useKeyboardShortcuts({
+  fabricRef,
+  handleUndo,
+  handleRedo,
+  handleDelete,
+  handleCopy,
+  handlePaste
+}) {
   useEffect(() => {
     const handleKeyDown = (e) => {
       const activeEl = document.activeElement;
@@ -14,16 +21,33 @@ export function useKeyboardShortcuts({ fabricRef, handleUndo, handleRedo, handle
 
       if (isTyping && !isFabricEditing) return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+      const key = e.key.toLowerCase();
+
+      // Undo: Ctrl + Z
+      if ((e.ctrlKey || e.metaKey) && key === 'z') {
         e.preventDefault();
         handleUndo();
       }
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+      // Redo: Ctrl + Y or Ctrl + Shift + Z
+      if ((e.ctrlKey || e.metaKey) && (key === 'y' || (e.shiftKey && key === 'z'))) {
         e.preventDefault();
         handleRedo();
       }
 
+      // Copy: Ctrl + C
+      if ((e.ctrlKey || e.metaKey) && key === 'c') {
+        e.preventDefault();
+        handleCopy();
+      }
+
+      // Paste: Ctrl + V
+      if ((e.ctrlKey || e.metaKey) && key === 'v') {
+        e.preventDefault();
+        handlePaste();
+      }
+
+      // Delete/Backspace
       if ((e.key === 'Delete' || e.key === 'Backspace') && !isTyping && !isFabricEditing) {
         e.preventDefault();
         handleDelete();
@@ -34,5 +58,5 @@ export function useKeyboardShortcuts({ fabricRef, handleUndo, handleRedo, handle
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fabricRef, handleUndo, handleRedo, handleDelete]);
+  }, [fabricRef, handleUndo, handleRedo, handleDelete, handleCopy, handlePaste]);
 }

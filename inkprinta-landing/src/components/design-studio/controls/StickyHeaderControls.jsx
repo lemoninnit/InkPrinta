@@ -1,9 +1,11 @@
 import TextFormatToolbar from './TextFormatToolbar.jsx';
+import ImageFormatToolbar from './ImageFormatToolbar.jsx';
 import HistoryControls from './HistoryControls.jsx';
 import ZoomControls from './ZoomControls.jsx';
 
 export default function StickyHeaderControls({
   textTools,
+  imageTools,
   undoStackRef,
   redoStackRef,
   onUndo,
@@ -51,6 +53,39 @@ export default function StickyHeaderControls({
           onListToggle={textTools.handleListToggle}
           onOpacityChange={textTools.handleOpacityChange}
           onColorSquareMouseDown={textTools.handleColorSquareMouseDown}
+        />
+
+        <ImageFormatToolbar
+          activeObject={textTools.activeObject}
+          strokeColor={imageTools.strokeColor}
+          strokeWidth={imageTools.strokeWidth}
+          strokeType={imageTools.strokeType}
+          cornerRadius={imageTools.cornerRadius}
+          opacity={imageTools.opacity}
+          flipX={imageTools.flipX}
+          flipY={imageTools.flipY}
+          aspectRatio={imageTools.aspectRatio}
+          showStrokePopover={imageTools.showStrokePopover}
+          setShowStrokePopover={imageTools.setShowStrokePopover}
+          showCornerPopover={imageTools.showCornerPopover}
+          setShowCornerPopover={imageTools.setShowCornerPopover}
+          showOpacityPopover={imageTools.showOpacityPopover}
+          setShowOpacityPopover={imageTools.setShowOpacityPopover}
+          isSliding={imageTools.isSliding}
+          setIsSliding={imageTools.setIsSliding}
+          onStrokeWidthChange={imageTools.handleStrokeWidthChange}
+          onStrokeTypeChange={imageTools.handleStrokeTypeChange}
+          onStrokeColorChange={imageTools.handleStrokeColorChange}
+          onCornerRadiusChange={imageTools.handleCornerRadiusChange}
+          onOpacityChange={imageTools.handleOpacityChange}
+          onFlipX={imageTools.handleFlipX}
+          onFlipY={imageTools.handleFlipY}
+          onStartCropping={imageTools.startCropping}
+          isCropping={imageTools.isCropping}
+          applyCrop={imageTools.applyCrop}
+          cancelCrop={imageTools.cancelCrop}
+          setAspectRatio={imageTools.setAspectRatio}
+          zoom={zoom}
         />
       </div>
 

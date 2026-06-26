@@ -1,4 +1,5 @@
 import CanvasControls from './CanvasControls.jsx';
+import CropOverlay from './CropOverlay.jsx';
 
 export default function CanvasArea({
   canvasRef,
@@ -9,9 +10,11 @@ export default function CanvasArea({
   isRotating,
   rotationAngle,
   isLocked,
+  isAdjusting,
   onToggleLock,
   onDuplicate,
-  onDelete
+  onDelete,
+  imageTools
 }) {
   return (
     <div className="flex-1 flex items-center justify-center py-12 flex-shrink-0 my-auto">
@@ -32,10 +35,17 @@ export default function CanvasArea({
             className="relative overflow-hidden rounded-xl"
           >
             <canvas ref={canvasRef} />
+
+            {imageTools?.isCropping && (
+              <CropOverlay
+                imageTools={imageTools}
+                zoom={zoom}
+              />
+            )}
           </div>
 
           <CanvasControls
-            activeObject={activeObject}
+            activeObject={(isAdjusting || imageTools?.isCropping) ? null : activeObject}
             coords={coords}
             zoom={zoom}
             isRotating={isRotating}
