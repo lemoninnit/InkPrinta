@@ -16,12 +16,18 @@ export function useCanvas({
   setIsRotating,
   setRotationAngle,
   syncTextFromObject,
-  syncImageFromObject
+  syncImageFromObject,
+  showPaintPanel
 }) {
   const showVerticalGuideRef = useRef(false);
   const showHorizontalGuideRef = useRef(false);
   const dragStartPosRef = useRef(null);
   const hasDuplicatedOnAltDragRef = useRef(false);
+  const showPaintPanelRef = useRef(showPaintPanel);
+
+  useEffect(() => {
+    showPaintPanelRef.current = showPaintPanel;
+  }, [showPaintPanel]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -110,7 +116,7 @@ export function useCanvas({
       if (e.e && e.e.altKey && !hasDuplicatedOnAltDragRef.current && dragStartPosRef.current) {
         hasDuplicatedOnAltDragRef.current = true;
         try {
-          const cloned = await activeObj.clone(['rx', 'ry']);
+          const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke']);
           cloned.set({
             left: dragStartPosRef.current.left,
             top: dragStartPosRef.current.top
@@ -224,6 +230,18 @@ export function useCanvas({
     canvas.on('after:render', handleAfterRender);
     canvas.on('object:added', handleObjectAdded);
     canvas.on('object:removed', handleObjectRemoved);
+    canvas.on('path:created', (e) => {
+      if (e.path) {
+        e.path.isPaintStroke = true;
+        if (showPaintPanelRef.current) {
+          e.path.selectable = false;
+          e.path.evented = false;
+        }
+        if (!isHandlingHistoryRef.current) {
+          saveStateToHistory();
+        }
+      }
+    });
 
     return () => {
       canvas.dispose();
@@ -235,11 +253,12 @@ export function useCanvas({
     if (!fabricRef.current) return;
 
     const canvas = fabricRef.current;
-    canvas.setZoom(zoom);
     canvas.setDimensions({
       width: currentProduct.printWidth * zoom,
       height: currentProduct.printHeight * zoom
     });
+    canvas.setZoom(zoom);
+    canvas.calcOffset();
     canvas.renderAll();
 
     const activeObj = canvas.getActiveObject();

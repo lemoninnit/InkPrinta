@@ -178,12 +178,12 @@ export function useTextTools(fabricRef, saveStateToHistory) {
     if (!activeObj) return;
 
     try {
-      const cloned = await activeObj.clone(['rx', 'ry']);
+      const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke']);
       cloned.set({
         left: activeObj.left + 24,
         top: activeObj.top + 24
       });
-      if (cloned.type === 'image') {
+      if (cloned.type && cloned.type.toLowerCase() === 'image') {
         initializeImageObject(cloned);
       } else {
         styleTextboxControls(cloned);
@@ -193,6 +193,7 @@ export function useTextTools(fabricRef, saveStateToHistory) {
       fabricRef.current.renderAll();
       setActiveObject(cloned);
       setCoords(cloned.getBoundingRect(true));
+      saveStateToHistory();
     } catch (err) {
       console.error('Cloning failed:', err);
     }

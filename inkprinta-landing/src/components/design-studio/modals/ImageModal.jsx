@@ -44,7 +44,8 @@ export default function ImageModal({ isOpen, onClose, fabricRef }) {
         
         // Close panel and clean up
         onClose();
-        URL.revokeObjectURL(objectUrl);
+        // Do not revoke objectURL immediately so that Undo/Redo can reload it from JSON
+        // URL.revokeObjectURL(objectUrl);
       }).catch((err) => {
         console.error('Failed to load image:', err);
       });

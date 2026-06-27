@@ -8,7 +8,7 @@ export function useHistory(fabricRef) {
 
   const saveStateToHistory = () => {
     if (!fabricRef.current || isHandlingHistoryRef.current) return;
-    const json = fabricRef.current.toJSON(['rx', 'ry']);
+    const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke']);
     undoStackRef.current.push(JSON.stringify(json));
     if (undoStackRef.current.length > 50) {
       undoStackRef.current.shift();

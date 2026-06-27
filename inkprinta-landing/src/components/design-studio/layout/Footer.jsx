@@ -1,10 +1,12 @@
+import React from 'react';
+
 const STUDIO_TABS = [
   {
     id: 'Product',
     label: 'Product',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9 4.5v1.8a3 3 0 006 0v-1.8m-6 0H4.5L3 8.25l3 1.5V20.25h12V9.75l3-1.5L19.5 4.5H15" />
+      <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 4V7a3 3 0 0 1-6 0V4H4.5L3 8.25l3 1.5v10.5h12V9.75l3-1.5L19.5 4H15Z" />
       </svg>
     )
   },
@@ -12,8 +14,10 @@ const STUDIO_TABS = [
     id: 'Image',
     label: 'Image',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+      <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="4" />
+        <circle cx="9" cy="9" r="2" />
+        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
       </svg>
     )
   },
@@ -21,8 +25,8 @@ const STUDIO_TABS = [
     id: 'Stamp',
     label: 'Stamp',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499c.172-.468.83-.468 1.002 0l3.001 8.163c.046.126.166.21.3.217l8.7.632c.504.037.707.658.343 1.011l-6.3 6.14a.428.428 0 00-.123.379l1.487 8.665c.086.502-.44.886-.889.65l-7.781-4.09a.434.434 0 00-.404 0l-7.781 4.09c-.449.236-.975-.148-.889-.65l1.487-8.665a.428.428 0 00-.123-.379l-6.3-6.14c-.364-.353-.161-.974.343-1.011l8.7-.632a.229.229 0 00.3-.217l3.001-8.163z" />
+      <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2L9 9H2l5.5 4.5L5.5 21l6.5-5 6.5 5-2-7.5L22 9h-7L12 2z" />
       </svg>
     )
   },
@@ -30,51 +34,69 @@ const STUDIO_TABS = [
     id: 'Text',
     label: 'Text',
     icon: (
-      <span className="font-serif font-extrabold text-[22px] leading-none select-none">A</span>
+      <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 7V4h16v3M9 20h6M12 4v16" />
+      </svg>
     )
   },
   {
     id: 'Paint',
     label: 'Paint',
     icon: (
-      <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122l9.37-9.37a2.25 2.25 0 113.182 3.182l-9.37 9.37a4.5 4.5 0 01-2.25 1.22l-3.136.627a1.125 1.125 0 01-1.327-1.327l.627-3.136a4.5 4.5 0 011.22-2.25z" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 6.5L17.5 9.5" />
+      <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18.7 5.3a2.1 2.1 0 1 0-3 3L18 10.5l.7-5.2z" />
+        <path d="M15.7 8.3L4.5 19.5a1.5 1.5 0 0 0 0 2.1l0 0a1.5 1.5 0 0 0 2.1 0L17.8 10.4" />
       </svg>
     )
   }
 ];
 
-export default function Footer({ activeTab, showProductPanel, showTextPanel, showImagePanel, onTabClick }) {
+export default function Footer({
+  activeTab,
+  showProductPanel,
+  showTextPanel,
+  showImagePanel,
+  showPaintPanel,
+  showStampPanel,
+  onTabClick
+}) {
   return (
-    <footer className="w-full bg-white/90 backdrop-blur-xl border-t border-slate-100 px-8 py-3.5 flex items-center justify-between relative shadow-[0_-8px_30px_rgba(0,0,0,0.02)] z-40">
-      <div className="flex-1 flex justify-center items-center gap-6 md:gap-12">
+    <footer className="w-full bg-white/95 backdrop-blur-xl border-t border-slate-100 px-8 py-3.5 flex items-center justify-between relative shadow-[0_-8px_30px_rgba(0,0,0,0.02)] z-40">
+      <div className="flex-1 flex justify-center items-center gap-6 md:gap-10">
         {STUDIO_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
           const isProduct = tab.id === 'Product';
           const isText = tab.id === 'Text';
           const isImage = tab.id === 'Image';
-          const isHighlighted = isActive || (isProduct && showProductPanel) || (isText && showTextPanel) || (isImage && showImagePanel);
+          const isPaint = tab.id === 'Paint';
+          const isStamp = tab.id === 'Stamp';
+
+          // Highlight is directly tied to the active/open state of the corresponding panel/modal
+          const isHighlighted =
+            (isProduct && showProductPanel) ||
+            (isText && showTextPanel) ||
+            (isImage && showImagePanel) ||
+            (isPaint && showPaintPanel) ||
+            (isStamp && showStampPanel);
 
           return (
             <button
               key={tab.id}
               onClick={() => onTabClick(tab.id)}
-              className={`flex flex-col items-center gap-1.5 py-2 px-6 rounded-2xl transition-all duration-300 relative ${
+              className={`flex flex-col items-center gap-1.5 py-2 px-6 rounded-2.5xl transition-all duration-300 relative cursor-pointer ${
                 isHighlighted
-                  ? 'bg-slate-100/90 text-cyan-600 scale-105 font-bold shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)]'
-                  : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50/50 hover:scale-102'
+                  ? 'bg-slate-900 text-white scale-105 font-bold shadow-[0_10px_25px_rgba(15,23,42,0.15)]'
+                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:scale-102'
               }`}
               type="button"
             >
-              <div className={`transition-transform duration-300 ${isHighlighted ? 'translate-y-[-1px]' : ''}`}>
+              <div className={`transition-transform duration-300 ${isHighlighted ? 'translate-y-[-1px] text-cyan-400' : 'text-current'}`}>
                 {tab.icon}
               </div>
-              <span className={`text-[10px] font-black uppercase tracking-widest select-none transition-colors ${isHighlighted ? 'text-slate-800' : 'text-slate-400'}`}>
+              <span className={`text-[9px] font-black uppercase tracking-widest select-none transition-colors ${isHighlighted ? 'text-white' : 'text-slate-400'}`}>
                 {tab.label}
               </span>
               {isHighlighted && (
-                <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-cyan-400" />
               )}
             </button>
           );

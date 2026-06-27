@@ -104,11 +104,15 @@ export const drawSnapGuides = (ctx, currentProduct, currentZoom, showVertical, s
 };
 
 export const initializeImageObject = (imgObj) => {
+  if (!imgObj) return;
   styleTextboxControls(imgObj);
   
-  if (!imgObj._originalRender) {
-    imgObj._originalRender = imgObj._render;
-  }
+  if (imgObj.isImageInitialized) return;
+  imgObj.isImageInitialized = true;
+  
+  const proto = Object.getPrototypeOf(imgObj);
+  const nativeRender = proto._render || imgObj._render;
+  imgObj._originalRender = nativeRender;
   
   imgObj._render = function(ctx) {
     const rx = this.rx || 0;
