@@ -20,7 +20,11 @@ export default function PaintModal({
   onChangeSize,
   brushOpacity,
   onChangeOpacity,
-  onClear
+  onClear,
+  undoStackRef,
+  redoStackRef,
+  onUndo,
+  onRedo
 }) {
   return (
     <AnimatePresence>
@@ -39,6 +43,7 @@ export default function PaintModal({
                 <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Paint Studio</h4>
                 <p className="text-[10px] text-slate-400 font-bold mt-0.5">Draw free-hand designs directly on your canvas</p>
               </div>
+              
               <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 transition-colors p-1" type="button">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
@@ -189,14 +194,14 @@ export default function PaintModal({
                 className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-600 font-extrabold text-xs uppercase tracking-wider hover:bg-slate-50 hover:text-slate-800 transition-colors active:scale-95 cursor-pointer"
                 type="button"
               >
-                Cancel
+                Clear
               </button>
               <button
                 onClick={onClose}
                 className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 hover:from-cyan-600 hover:to-cyan-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-md hover:shadow-cyan-100/50 hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all cursor-pointer"
                 type="button"
               >
-                Use
+                Done
               </button>
             </div>
           </motion.div>

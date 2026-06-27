@@ -6,7 +6,8 @@ import { useTextTools } from './hooks/useTextTools.js';
 import { useImageTools } from './hooks/useImageTools.js';
 import { useCanvas } from './hooks/useCanvas.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
-import { PencilBrush } from 'fabric';
+import { PencilBrush, Group, ActiveSelection } from 'fabric';
+import { PaintbrushBrush } from './utils/PaintbrushBrush.js';
 import { styleTextboxControls, initializeImageObject } from './utils/helpers.js';
 import Header from './layout/Header.jsx';
 import Footer from './layout/Footer.jsx';
@@ -17,6 +18,7 @@ import TextModal from './modals/TextModal.jsx';
 import ImageModal from './modals/ImageModal.jsx';
 import PaintModal from './modals/PaintModal.jsx';
 import StampModal from './modals/StampModal.jsx';
+import LayersPanel from './modals/LayersPanel.jsx';
 
 export default function DesignStudio() {
   const canvasRef = useRef(null);
@@ -33,6 +35,7 @@ export default function DesignStudio() {
   const [brushSize, setBrushSize] = useState(3);
   const [brushOpacity, setBrushOpacity] = useState(1.0);
   const [currentProduct, setCurrentProduct] = useState(PRODUCTS[0]);
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
 
   const { zoom, viewportRef, zoomOut, zoomIn, resetZoom } = useZoom();
 
@@ -102,6 +105,119 @@ export default function DesignStudio() {
   const onUndo = () => handleUndo(syncSelectionAfterHistory);
   const onRedo = () => handleRedo(syncSelectionAfterHistory);
 
+  const handleToggleLayersPanel = () => {
+    setShowLayersPanel((prev) => !prev);
+  };
+
+  const handleBringToFront = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+    canvas.bringObjectToFront(activeObj);
+    canvas.renderAll();
+    saveStateToHistory();
+    syncSelectionAfterHistory();
+  };
+
+  const handleBringForward = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+    canvas.bringObjectForward(activeObj);
+    canvas.renderAll();
+    saveStateToHistory();
+    syncSelectionAfterHistory();
+  };
+
+  const handleSendBackward = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+    canvas.sendObjectBackwards(activeObj);
+    canvas.renderAll();
+    saveStateToHistory();
+    syncSelectionAfterHistory();
+  };
+
+  const handleSendToBack = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+    canvas.sendObjectToBack(activeObj);
+    canvas.renderAll();
+    saveStateToHistory();
+    syncSelectionAfterHistory();
+  };
+
+  const handleGroup = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+
+    const isMultiple = activeObj.type === 'activeSelection' || activeObj.type === 'active-selection' || (activeObj._objects && activeObj.type !== 'group');
+
+    if (isMultiple) {
+      const objects = activeObj.getObjects();
+      // Deselect first to release controls
+      canvas.discardActiveObject();
+      // Remove individual items from canvas
+      objects.forEach((obj) => canvas.remove(obj));
+
+      // Create new Group with extracted items
+      const group = new Group(objects, {
+        subTargetCheck: false,
+        interactive: false
+      });
+
+      canvas.add(group);
+      canvas.setActiveObject(group);
+      canvas.requestRenderAll();
+      saveStateToHistory();
+      syncSelectionAfterHistory();
+    } else if (activeObj.type === 'group') {
+      // Remove group object
+      canvas.remove(activeObj);
+      // Remove all elements from the group structure
+      const items = activeObj.removeAll();
+      // Add individual elements back to canvas
+      canvas.add(...items);
+
+      // Create and set active selection to mimic Canva's ungroup selection behavior
+      const activeSelection = new ActiveSelection(items, { canvas });
+      canvas.setActiveObject(activeSelection);
+      canvas.requestRenderAll();
+      saveStateToHistory();
+      syncSelectionAfterHistory();
+    }
+  };
+
+  const handleSelectObject = (obj) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    // Clear child selections on all other groups
+    canvas.getObjects().forEach(o => {
+      if (o.type === 'group' && o !== obj.group) {
+        o._selectedChild = null;
+      }
+    });
+
+    if (obj.group) {
+      obj.group._selectedChild = obj;
+      canvas.setActiveObject(obj.group);
+    } else {
+      canvas.setActiveObject(obj);
+    }
+
+    canvas.renderAll();
+    syncSelectionAfterHistory();
+  };
+
   useCanvas({
     canvasRef,
     fabricRef,
@@ -130,8 +246,21 @@ export default function DesignStudio() {
     handleRedo: onRedo,
     handleDelete: textTools.handleDelete,
     handleCopy,
-    handlePaste
+    handlePaste,
+    handleBringToFront,
+    handleBringForward,
+    handleSendBackward,
+    handleSendToBack,
+    handleToggleLayers: handleToggleLayersPanel,
+    handleGroup
   });
+
+  // Automatically close layers panel when selection is cleared (when Layer button is not in use)
+  useEffect(() => {
+    if (!textTools.activeObject) {
+      setShowLayersPanel(false);
+    }
+  }, [textTools.activeObject]);
 
   const handleTabClick = (tabId) => {
     if (tabId === 'Product') {
@@ -266,11 +395,20 @@ export default function DesignStudio() {
         obj.evented = false;
       });
 
-      if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PencilBrush)) {
-        canvas.freeDrawingBrush = new PencilBrush(canvas);
+      if (activeTool === 'brush') {
+        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PaintbrushBrush)) {
+          canvas.freeDrawingBrush = new PaintbrushBrush(canvas);
+        }
+        canvas.freeDrawingBrush.color = brushColor;
+        canvas.freeDrawingBrush.width = brushSize;
+        canvas.freeDrawingBrush.opacity = brushOpacity;
+      } else {
+        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PencilBrush)) {
+          canvas.freeDrawingBrush = new PencilBrush(canvas);
+        }
+        canvas.freeDrawingBrush.color = hexToRgba(brushColor, brushOpacity);
+        canvas.freeDrawingBrush.width = brushSize;
       }
-      canvas.freeDrawingBrush.color = hexToRgba(brushColor, brushOpacity);
-      canvas.freeDrawingBrush.width = brushSize;
     } else {
       canvas.forEachObject((obj) => {
         if (obj.isPaintStroke) {
@@ -455,6 +593,12 @@ export default function DesignStudio() {
           showPaintPanel={showPaintPanel}
           activeTool={activeTool}
           brushSize={brushSize}
+          onBringToFront={handleBringToFront}
+          onBringForward={handleBringForward}
+          onSendBackward={handleSendBackward}
+          onSendToBack={handleSendToBack}
+          onToggleLayersPanel={handleToggleLayersPanel}
+          onGroup={handleGroup}
         />
       </main>
 
@@ -505,7 +649,10 @@ export default function DesignStudio() {
 
       <PaintModal
         isOpen={showPaintPanel}
-        onClose={() => setShowPaintPanel(false)}
+        onClose={() => {
+          setShowPaintPanel(false);
+          setActiveTab('');
+        }}
         onCancel={handleCancelPaint}
         activeTool={activeTool}
         onSelectTool={handleSelectTool}
@@ -516,6 +663,10 @@ export default function DesignStudio() {
         brushOpacity={brushOpacity}
         onChangeOpacity={setBrushOpacity}
         onClear={handleClearDrawing}
+        undoStackRef={undoStackRef}
+        redoStackRef={redoStackRef}
+        onUndo={onUndo}
+        onRedo={onRedo}
       />
 
       <StampModal
@@ -523,6 +674,16 @@ export default function DesignStudio() {
         onClose={() => setShowStampPanel(false)}
         fabricRef={fabricRef}
         saveStateToHistory={saveStateToHistory}
+      />
+
+      <LayersPanel
+        isOpen={showLayersPanel}
+        onClose={() => setShowLayersPanel(false)}
+        canvas={fabricRef.current}
+        activeObject={textTools.activeObject}
+        onSelectObject={handleSelectObject}
+        saveStateToHistory={saveStateToHistory}
+        triggerRender={syncSelectionAfterHistory}
       />
     </div>
   );

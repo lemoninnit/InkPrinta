@@ -53,6 +53,16 @@ export function useCanvas({
           syncTextFromObject(activeObj);
         } else if (activeObj.type === 'image') {
           syncImageFromObject(activeObj);
+        } else if (activeObj.type === 'group') {
+          if (!activeObj._selectedChild) {
+            const firstImg = activeObj.getObjects ? activeObj.getObjects().find(o => o.type === 'image') : null;
+            if (firstImg) {
+              activeObj._selectedChild = firstImg;
+            }
+          }
+          if (activeObj._selectedChild) {
+            syncImageFromObject(activeObj._selectedChild);
+          }
         }
       } else {
         setActiveObject(null);
@@ -126,9 +136,10 @@ export function useCanvas({
           } else {
             styleTextboxControls(cloned);
           }
+          isHandlingHistoryRef.current = true;
           canvas.add(cloned);
+          isHandlingHistoryRef.current = false;
           canvas.renderAll();
-          saveStateToHistory();
         } catch (err) {
           console.error('Alt-drag cloning failed:', err);
         }
@@ -194,6 +205,33 @@ export function useCanvas({
       canvas.renderAll();
     };
 
+    const getCanvasCoords = (obj) => {
+      const coords = obj.getCoords ? obj.getCoords() : null;
+      if (Array.isArray(coords) && coords.length === 4) {
+        return coords;
+      }
+      if (coords && coords.tl) {
+        return [coords.tl, coords.tr, coords.br, coords.bl];
+      }
+      if (typeof obj.calcTransformMatrix === 'function') {
+        const width = obj.width || 0;
+        const height = obj.height || 0;
+        const matrix = obj.calcTransformMatrix();
+        const transform = (x, y) => {
+          const px = matrix[0] * x + matrix[2] * y + matrix[4];
+          const py = matrix[1] * x + matrix[3] * y + matrix[5];
+          return { x: px, y: py };
+        };
+        return [
+          transform(-width / 2, -height / 2),
+          transform(width / 2, -height / 2),
+          transform(width / 2, height / 2),
+          transform(-width / 2, height / 2)
+        ];
+      }
+      return null;
+    };
+
     const handleAfterRender = () => {
       const ctx = canvas.getContext();
       if (!ctx) return;
@@ -204,12 +242,81 @@ export function useCanvas({
         showVerticalGuideRef.current,
         showHorizontalGuideRef.current
       );
+
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && activeObj.type === 'group') {
+        const group = activeObj;
+        const children = group.getObjects ? group.getObjects() : (group._objects || []);
+        const selectedChild = group._selectedChild;
+
+        if (selectedChild) {
+          ctx.save();
+          children.forEach((child) => {
+            const isSelected = child === selectedChild;
+            const coords = getCanvasCoords(child);
+            if (!coords) return;
+
+            ctx.beginPath();
+            ctx.moveTo(coords[0].x, coords[0].y);
+            ctx.lineTo(coords[1].x, coords[1].y);
+            ctx.lineTo(coords[2].x, coords[2].y);
+            ctx.lineTo(coords[3].x, coords[3].y);
+            ctx.closePath();
+
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = isSelected ? 2 : 1.5;
+            if (!isSelected) {
+              ctx.setLineDash([4, 4]);
+            } else {
+              ctx.setLineDash([]);
+            }
+            ctx.stroke();
+
+            if (isSelected) {
+              ctx.fillStyle = '#ffffff';
+              ctx.strokeStyle = '#06b6d4';
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([]);
+
+              const handleSize = 5;
+              coords.forEach((pt) => {
+                ctx.beginPath();
+                ctx.rect(pt.x - handleSize, pt.y - handleSize, handleSize * 2, handleSize * 2);
+                ctx.fill();
+                ctx.stroke();
+              });
+
+              const midpoints = [
+                { x: (coords[0].x + coords[1].x) / 2, y: (coords[0].y + coords[1].y) / 2 },
+                { x: (coords[1].x + coords[2].x) / 2, y: (coords[1].y + coords[2].y) / 2 },
+                { x: (coords[2].x + coords[3].x) / 2, y: (coords[2].y + coords[3].y) / 2 },
+                { x: (coords[3].x + coords[0].x) / 2, y: (coords[3].y + coords[0].y) / 2 }
+              ];
+
+              midpoints.forEach((pt, i) => {
+                ctx.beginPath();
+                if (i % 2 === 0) {
+                  ctx.rect(pt.x - 8, pt.y - 3, 16, 6);
+                } else {
+                  ctx.rect(pt.x - 3, pt.y - 8, 6, 16);
+                }
+                ctx.fill();
+                ctx.stroke();
+              });
+            }
+          });
+          ctx.restore();
+        }
+      }
     };
 
     const handleObjectAdded = (e) => {
       const obj = e.target;
       if (obj && obj.type === 'image') {
         initializeImageObject(obj);
+      }
+      if (obj && (obj.type === 'path' || obj.isPaintStroke)) {
+        return;
       }
       if (!isHandlingHistoryRef.current) saveStateToHistory();
     };

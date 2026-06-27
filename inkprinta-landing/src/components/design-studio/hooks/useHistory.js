@@ -1,19 +1,29 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { styleTextboxControls, initializeImageObject } from '../utils/helpers.js';
 
 export function useHistory(fabricRef) {
   const undoStackRef = useRef([]);
   const redoStackRef = useRef([]);
   const isHandlingHistoryRef = useRef(false);
+  const [, setHistoryTrigger] = useState(0);
+
+  const triggerRender = () => {
+    setHistoryTrigger((prev) => prev + 1);
+  };
 
   const saveStateToHistory = () => {
     if (!fabricRef.current || isHandlingHistoryRef.current) return;
     const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke']);
-    undoStackRef.current.push(JSON.stringify(json));
+    const jsonStr = JSON.stringify(json);
+    if (undoStackRef.current.length > 0 && undoStackRef.current[undoStackRef.current.length - 1] === jsonStr) {
+      return;
+    }
+    undoStackRef.current.push(jsonStr);
     if (undoStackRef.current.length > 50) {
       undoStackRef.current.shift();
     }
     redoStackRef.current = [];
+    triggerRender();
   };
 
   const restoreFromJson = (stateJson, onComplete) => {
@@ -49,7 +59,10 @@ export function useHistory(fabricRef) {
     const currentState = undoStackRef.current.pop();
     redoStackRef.current.push(currentState);
     const prevStateJson = undoStackRef.current[undoStackRef.current.length - 1];
-    restoreFromJson(prevStateJson, onComplete);
+    restoreFromJson(prevStateJson, () => {
+      onComplete?.();
+      triggerRender();
+    });
   };
 
   const handleRedo = (onComplete) => {
@@ -57,7 +70,10 @@ export function useHistory(fabricRef) {
 
     const nextStateJson = redoStackRef.current.pop();
     undoStackRef.current.push(nextStateJson);
-    restoreFromJson(nextStateJson, onComplete);
+    restoreFromJson(nextStateJson, () => {
+      onComplete?.();
+      triggerRender();
+    });
   };
 
   return {

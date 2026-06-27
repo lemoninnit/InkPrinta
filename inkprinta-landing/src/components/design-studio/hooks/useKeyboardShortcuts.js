@@ -6,7 +6,13 @@ export function useKeyboardShortcuts({
   handleRedo,
   handleDelete,
   handleCopy,
-  handlePaste
+  handlePaste,
+  handleBringToFront,
+  handleBringForward,
+  handleSendBackward,
+  handleSendToBack,
+  handleToggleLayers,
+  handleGroup
 }) {
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -52,11 +58,55 @@ export function useKeyboardShortcuts({
         e.preventDefault();
         handleDelete();
       }
+
+      // Bring to Front: Ctrl + Alt + ] (Wait, US keyboard ']' key)
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === ']') {
+        e.preventDefault();
+        handleBringToFront?.();
+      }
+      // Bring Forward: Ctrl + ]
+      else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === ']') {
+        e.preventDefault();
+        handleBringForward?.();
+      }
+      // Send to Back: Ctrl + Alt + [
+      else if ((e.ctrlKey || e.metaKey) && e.altKey && e.key === '[') {
+        e.preventDefault();
+        handleSendToBack?.();
+      }
+      // Send Backward: Ctrl + [
+      else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === '[') {
+        e.preventDefault();
+        handleSendBackward?.();
+      }
+      // Show Layers: Alt + 1
+      else if (e.altKey && key === '1') {
+        e.preventDefault();
+        handleToggleLayers?.();
+      }
+      // Group/Ungroup: Ctrl + G
+      else if ((e.ctrlKey || e.metaKey) && key === 'g') {
+        e.preventDefault();
+        handleGroup?.();
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [fabricRef, handleUndo, handleRedo, handleDelete, handleCopy, handlePaste]);
+  }, [
+    fabricRef,
+    handleUndo,
+    handleRedo,
+    handleDelete,
+    handleCopy,
+    handlePaste,
+    handleBringToFront,
+    handleBringForward,
+    handleSendBackward,
+    handleSendToBack,
+    handleToggleLayers,
+    handleGroup
+  ]);
 }

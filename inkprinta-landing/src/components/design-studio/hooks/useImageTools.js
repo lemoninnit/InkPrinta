@@ -51,19 +51,28 @@ export function useImageTools(fabricRef, saveStateToHistory) {
     fabricRef.current.renderAll();
   }, [isSliding, fabricRef]);
 
-  const syncImageFromObject = (activeObj) => {
-    if (!activeObj) return;
-    setStrokeColor(activeObj.stroke || '#000000');
-    setStrokeWidth(activeObj.strokeWidth || 0);
-    setCornerRadius(activeObj.rx || 0);
-    setOpacity(activeObj.opacity !== undefined ? activeObj.opacity : 1.0);
-    setFlipX(activeObj.flipX || false);
-    setFlipY(activeObj.flipY || false);
+  const getTargetImage = (activeObj) => {
+    if (!activeObj) return null;
+    if (activeObj.type === 'group') {
+      return activeObj._selectedChild || activeObj.getObjects().find(o => o.type === 'image');
+    }
+    return activeObj.type === 'image' ? activeObj : null;
+  };
 
-    if (!activeObj.stroke || activeObj.strokeWidth === 0) {
+  const syncImageFromObject = (activeObj) => {
+    const targetObj = getTargetImage(activeObj);
+    if (!targetObj) return;
+    setStrokeColor(targetObj.stroke || '#000000');
+    setStrokeWidth(targetObj.strokeWidth || 0);
+    setCornerRadius(targetObj.rx || 0);
+    setOpacity(targetObj.opacity !== undefined ? targetObj.opacity : 1.0);
+    setFlipX(targetObj.flipX || false);
+    setFlipY(targetObj.flipY || false);
+
+    if (!targetObj.stroke || targetObj.strokeWidth === 0) {
       setStrokeType('none');
-    } else if (activeObj.strokeDashArray) {
-      if (activeObj.strokeDashArray[0] >= 8) {
+    } else if (targetObj.strokeDashArray) {
+      if (targetObj.strokeDashArray[0] >= 8) {
         setStrokeType('dashed-large');
       } else {
         setStrokeType('dashed-small');
@@ -76,10 +85,11 @@ export function useImageTools(fabricRef, saveStateToHistory) {
   const updateActiveImageProp = (properties) => {
     if (!fabricRef.current) return;
     const activeObj = fabricRef.current.getActiveObject();
-    if (!activeObj) return;
+    const targetObj = getTargetImage(activeObj);
+    if (!targetObj) return;
 
-    activeObj.set(properties);
-    activeObj.setCoords();
+    targetObj.set(properties);
+    targetObj.setCoords();
     fabricRef.current.renderAll();
     saveStateToHistory?.();
   };
@@ -130,11 +140,12 @@ export function useImageTools(fabricRef, saveStateToHistory) {
     setCornerRadius(radius);
     if (!fabricRef.current) return;
     const activeObj = fabricRef.current.getActiveObject();
-    if (!activeObj) return;
+    const targetObj = getTargetImage(activeObj);
+    if (!targetObj) return;
 
-    activeObj.set({ rx: radius, ry: radius });
+    targetObj.set({ rx: radius, ry: radius });
 
-    activeObj.setCoords();
+    targetObj.setCoords();
     fabricRef.current.renderAll();
     saveStateToHistory?.();
   };
@@ -158,14 +169,15 @@ export function useImageTools(fabricRef, saveStateToHistory) {
   };
 
   const startCropping = (activeObj) => {
-    if (!activeObj || activeObj.type !== 'image') return;
-    setCroppingImage(activeObj);
-    setOriginalOpacity(activeObj.opacity !== undefined ? activeObj.opacity : 1);
+    const targetObj = getTargetImage(activeObj);
+    if (!targetObj) return;
+    setCroppingImage(targetObj);
+    setOriginalOpacity(targetObj.opacity !== undefined ? targetObj.opacity : 1);
     setIsCropping(true);
     resetPopovers();
     setAspectRatio('free');
 
-    activeObj.set({
+    targetObj.set({
       opacity: 0.25,
       selectable: false,
       evented: false

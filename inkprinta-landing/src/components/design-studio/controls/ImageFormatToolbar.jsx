@@ -32,7 +32,12 @@ export default function ImageFormatToolbar({
   setAspectRatio,
   zoom
 }) {
-  if (!isCropping && (!activeObject || activeObject.type !== 'image')) return null;
+  const hasImage = activeObject && (
+    activeObject.type === 'image' ||
+    (activeObject.type === 'group' && typeof activeObject.getObjects === 'function' && activeObject.getObjects().some(o => o.type === 'image'))
+  );
+
+  if (!isCropping && !hasImage) return null;
 
   const closeOtherPopovers = (except) => {
     if (except !== 'stroke') setShowStrokePopover(false);

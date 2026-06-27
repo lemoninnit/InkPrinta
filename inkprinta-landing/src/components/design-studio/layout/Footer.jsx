@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const STUDIO_TABS = [
   {
@@ -79,26 +80,43 @@ export default function Footer({
             (isStamp && showStampPanel);
 
           return (
-            <button
+            <motion.button
               key={tab.id}
               onClick={() => onTabClick(tab.id)}
-              className={`flex flex-col items-center gap-1.5 py-2 px-6 rounded-2.5xl transition-all duration-300 relative cursor-pointer ${
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.90 }}
+              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              className={`flex flex-col items-center gap-1.5 py-2.5 px-6 rounded-2.5xl relative cursor-pointer group select-none ${
                 isHighlighted
-                  ? 'bg-slate-900 text-white scale-105 font-bold shadow-[0_10px_25px_rgba(15,23,42,0.15)]'
-                  : 'text-slate-400 hover:text-slate-700 hover:bg-slate-50 hover:scale-102'
+                  ? 'text-cyan-600 font-bold'
+                  : 'text-slate-400 hover:text-slate-700'
               }`}
               type="button"
             >
-              <div className={`transition-transform duration-300 ${isHighlighted ? 'translate-y-[-1px] text-cyan-400' : 'text-current'}`}>
+              {/* Modern glassmorphic active tab indicator bubble with spring transition */}
+              {isHighlighted && (
+                <motion.div
+                  layoutId="activeTabBackground"
+                  className="absolute inset-0 bg-gradient-to-tr from-cyan-500/[0.08] to-indigo-500/[0.08] border border-cyan-500/20 rounded-2.5xl -z-10 shadow-[0_4px_12px_rgba(6,182,212,0.04)]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+
+              <div className={`transition-transform duration-300 ${isHighlighted ? 'scale-110 text-cyan-600' : 'group-hover:scale-110'}`}>
                 {tab.icon}
               </div>
-              <span className={`text-[9px] font-black uppercase tracking-widest select-none transition-colors ${isHighlighted ? 'text-white' : 'text-slate-400'}`}>
+              <span className={`text-[9px] font-black uppercase tracking-widest select-none transition-colors ${isHighlighted ? 'text-slate-800' : 'text-slate-400'}`}>
                 {tab.label}
               </span>
+              
               {isHighlighted && (
-                <span className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                <motion.span
+                  layoutId="activeTabIndicatorDot"
+                  className="absolute bottom-1 w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_8px_rgba(6,182,212,0.8)]"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
               )}
-            </button>
+            </motion.button>
           );
         })}
       </div>

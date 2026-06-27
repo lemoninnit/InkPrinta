@@ -17,7 +17,13 @@ export default function CanvasArea({
   imageTools,
   showPaintPanel,
   activeTool,
-  brushSize
+  brushSize,
+  onBringToFront,
+  onBringForward,
+  onSendBackward,
+  onSendToBack,
+  onToggleLayersPanel,
+  onGroup
 }) {
   const PENCIL_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/><path d='m15 5 4 4'/></svg>") 0 24, pointer`;
   const BRUSH_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 22 .711-2.143a9.9 9.9 0 0 0 .506-4.577L12 11.236 8.783 15.28a9.9 9.9 0 0 0 .506 4.577Z'/><path d='M12 11.236V2.428a2.43 2.43 0 0 1 4.86 0v2.43'/></svg>") 0 24, pointer`;
@@ -94,6 +100,12 @@ export default function CanvasArea({
             onToggleLock={onToggleLock}
             onDuplicate={onDuplicate}
             onDelete={onDelete}
+            onBringToFront={onBringToFront}
+            onBringForward={onBringForward}
+            onSendBackward={onSendBackward}
+            onSendToBack={onSendToBack}
+            onToggleLayersPanel={onToggleLayersPanel}
+            onGroup={onGroup}
           />
         </div>
       </div>
