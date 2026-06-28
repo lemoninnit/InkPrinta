@@ -23,10 +23,11 @@ export default function CanvasArea({
   onSendBackward,
   onSendToBack,
   onToggleLayersPanel,
-  onGroup
+  onGroup,
+  isEditingGroup
 }) {
   const PENCIL_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z'/><path d='m15 5 4 4'/></svg>") 0 24, pointer`;
-  const BRUSH_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2306b6d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='m12 22 .711-2.143a9.9 9.9 0 0 0 .506-4.577L12 11.236 8.783 15.28a9.9 9.9 0 0 0 .506 4.577Z'/><path d='M12 11.236V2.428a2.43 2.43 0 0 1 4.86 0v2.43'/></svg>") 0 24, pointer`;
+  const BRUSH_CURSOR = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 512 512' fill='%2306b6d4'><path d='M167.02 309.34c-40.12 2.58-76.53 17.86-97.19 72.3-2.35 6.21-8 9.98-14.59 9.98-11.11 0-45.46-27.67-55.25-34.35C0 439.62 37.93 512 128 512c75.86 0 128-43.77 128-120.19 0-3.11-.65-6.08-.97-9.13l-88.01-73.34zM457.89 0c-15.16 0-29.37 6.71-40.21 16.45C213.27 199.05 192 203.34 192 257.09c0 13.7 3.25 26.76 8.73 38.7l63.82 53.18c7.14 5.95 16 9.03 25.1 9.03H384c25.4 0 54.57-27.76 60.19-54.58L495.55 40c3.27-15.53-6.01-31.02-21.66-34.31A32.557 32.557 0 0 0 457.89 0z'/></svg>") 0 24, pointer`;
 
   const getEraserCursor = (width, z) => {
     const size = Math.max(width * z, 4); // minimum 4px
@@ -106,6 +107,7 @@ export default function CanvasArea({
             onSendToBack={onSendToBack}
             onToggleLayersPanel={onToggleLayersPanel}
             onGroup={onGroup}
+            isEditingGroup={isEditingGroup}
           />
         </div>
       </div>

@@ -45,8 +45,7 @@ const STUDIO_TABS = [
     label: 'Paint',
     icon: (
       <svg className="w-5.5 h-5.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18.7 5.3a2.1 2.1 0 1 0-3 3L18 10.5l.7-5.2z" />
-        <path d="M15.7 8.3L4.5 19.5a1.5 1.5 0 0 0 0 2.1l0 0a1.5 1.5 0 0 0 2.1 0L17.8 10.4" />
+        <path d="M16.862 4.487l1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487zm0 0L19.5 7.125" />
       </svg>
     )
   }
@@ -59,7 +58,8 @@ export default function Footer({
   showImagePanel,
   showPaintPanel,
   showStampPanel,
-  onTabClick
+  onTabClick,
+  onPreview
 }) {
   return (
     <footer className="w-full bg-white/95 backdrop-blur-xl border-t border-slate-100 px-8 py-3.5 flex items-center justify-between relative shadow-[0_-8px_30px_rgba(0,0,0,0.02)] z-40">
@@ -123,6 +123,7 @@ export default function Footer({
 
       <div className="flex-none pl-4">
         <button
+          onClick={onPreview}
           className="px-8 py-3.5 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-cyan-600 hover:to-cyan-500 text-white rounded-full text-xs font-black shadow-md hover:shadow-cyan-100/50 hover:-translate-y-0.5 transition-all duration-300 uppercase tracking-widest active:translate-y-0 active:scale-95 cursor-pointer"
           type="button"
         >

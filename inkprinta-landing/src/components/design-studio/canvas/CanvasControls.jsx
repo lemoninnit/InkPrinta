@@ -15,7 +15,8 @@ export default function CanvasControls({
   onSendBackward,
   onSendToBack,
   onToggleLayersPanel,
-  onGroup
+  onGroup,
+  isEditingGroup
 }) {
   const [showLayerDropdown, setShowLayerDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -77,16 +78,16 @@ export default function CanvasControls({
           <div className="w-[1px] h-3 bg-slate-200/80" />
 
           {/* Group / Ungroup Button */}
-          {(isMultiple || isGroup) && (
+          {(isMultiple || isGroup || isEditingGroup) && (
             <>
               <button
                 onClick={onGroup}
                 disabled={isLocked}
                 className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                title={isGroup ? 'Ungroup Elements' : 'Group Elements'}
+                title={(isGroup || isEditingGroup) ? 'Ungroup Elements' : 'Group Elements'}
                 type="button"
               >
-                {isGroup ? (
+                {(isGroup || isEditingGroup) ? (
                   <svg className="w-3.5 h-3.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18 18V6H6v12h12zm0 2H6c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2z" />
                   </svg>

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { Canvas } from 'fabric';
+import { Canvas, Group } from 'fabric';
+import { EraserBrush } from '@erase2d/fabric';
 import { SNAP_THRESHOLD } from '../utils/constants.js';
 import { styleTextboxControls, drawSnapGuides, initializeImageObject } from '../utils/helpers.js';
 
@@ -17,7 +18,8 @@ export function useCanvas({
   setRotationAngle,
   syncTextFromObject,
   syncImageFromObject,
-  showPaintPanel
+  showPaintPanel,
+  step
 }) {
   const showVerticalGuideRef = useRef(false);
   const showHorizontalGuideRef = useRef(false);
@@ -41,27 +43,137 @@ export function useCanvas({
     });
 
     fabricRef.current = canvas;
-    saveStateToHistory();
+
+    const savedDraft = localStorage.getItem('inkprinta_design_draft');
+    if (savedDraft) {
+      isHandlingHistoryRef.current = true;
+      try {
+        const parsed = JSON.parse(savedDraft);
+        const loadPromise = canvas.loadFromJSON(parsed);
+        const afterLoad = () => {
+          canvas.forEachObject((obj) => {
+            if (obj.type === 'textbox') {
+              styleTextboxControls(obj);
+            } else if (obj.type === 'image') {
+              initializeImageObject(obj);
+            }
+            if (showPaintPanelRef.current) {
+              obj.selectable = false;
+              obj.evented = false;
+            } else {
+              if (obj.isPaintStroke) {
+                obj.selectable = true;
+                obj.evented = true;
+              } else {
+                const isObjLocked = obj.lockMovementX || false;
+                obj.selectable = !isObjLocked;
+                obj.evented = true;
+              }
+            }
+          });
+          canvas.renderAll();
+          isHandlingHistoryRef.current = false;
+          saveStateToHistory();
+        };
+
+        if (loadPromise && typeof loadPromise.then === 'function') {
+          loadPromise.then(afterLoad);
+        } else {
+          afterLoad();
+        }
+      } catch (err) {
+        console.error('Failed to load design draft from localStorage:', err);
+        isHandlingHistoryRef.current = false;
+        saveStateToHistory();
+      }
+    } else {
+      saveStateToHistory();
+    }
+
+    canvas._editingGroup = null;
+
+    canvas.selectGroupChild = (group, child) => {
+      if (canvas._editingGroup) {
+        canvas.commitGroupEditing();
+      }
+
+      canvas.remove(group);
+      const items = group.removeAll();
+      canvas.add(...items);
+
+      canvas._editingGroup = {
+        group: group,
+        originalObjects: items,
+        activeChild: child
+      };
+
+      items.forEach(item => {
+        item.selectable = true;
+        item.evented = true;
+      });
+
+      canvas.getObjects().forEach(o => {
+        if (o.type === 'group') {
+          o._selectedChild = null;
+        }
+      });
+
+      canvas.setActiveObject(child);
+      canvas.requestRenderAll();
+    };
+
+    canvas.commitGroupEditing = () => {
+      if (!canvas._editingGroup) return;
+      const { originalObjects } = canvas._editingGroup;
+      canvas._editingGroup = null;
+
+      const currentObjects = canvas.getObjects();
+      const objectsToGroup = originalObjects.filter(obj => currentObjects.includes(obj));
+
+      if (objectsToGroup.length > 1) {
+        objectsToGroup.forEach(obj => canvas.remove(obj));
+
+        const group = new Group(objectsToGroup, {
+          subTargetCheck: true,
+          interactive: false
+        });
+
+        canvas.add(group);
+        canvas.setActiveObject(group);
+        canvas.requestRenderAll();
+        
+        saveStateToHistory();
+      }
+    };
 
     const updateSelection = () => {
       const activeObj = canvas.getActiveObject();
-      if (activeObj) {
-        setActiveObject(activeObj);
-        setCoords(activeObj.getBoundingRect(true));
-        setIsLocked(activeObj.lockMovementX || false);
-        if (activeObj.type === 'textbox') {
-          syncTextFromObject(activeObj);
-        } else if (activeObj.type === 'image') {
-          syncImageFromObject(activeObj);
-        } else if (activeObj.type === 'group') {
-          if (!activeObj._selectedChild) {
-            const firstImg = activeObj.getObjects ? activeObj.getObjects().find(o => o.type === 'image') : null;
+      
+      if (canvas._editingGroup) {
+        const { originalObjects } = canvas._editingGroup;
+        if (!activeObj || !originalObjects.includes(activeObj)) {
+          canvas.commitGroupEditing();
+        }
+      }
+
+      const currentActive = canvas.getActiveObject();
+      if (currentActive) {
+        setActiveObject(currentActive);
+        setCoords(currentActive.getBoundingRect(true));
+        setIsLocked(currentActive.lockMovementX || false);
+        if (currentActive.type === 'textbox') {
+          syncTextFromObject(currentActive);
+        } else if (currentActive.type === 'image') {
+          syncImageFromObject(currentActive);
+        } else if (currentActive.type === 'group') {
+          if (!currentActive._selectedChild) {
+            const firstImg = currentActive.getObjects ? currentActive.getObjects().find(o => o.type === 'image') : null;
             if (firstImg) {
-              activeObj._selectedChild = firstImg;
+              currentActive._selectedChild = firstImg;
             }
           }
-          if (activeObj._selectedChild) {
-            syncImageFromObject(activeObj._selectedChild);
+          if (currentActive._selectedChild) {
+            syncImageFromObject(currentActive._selectedChild);
           }
         }
       } else {
@@ -116,6 +228,20 @@ export function useCanvas({
         dragStartPosRef.current = null;
       }
       hasDuplicatedOnAltDragRef.current = false;
+
+      if (e.target && e.target.type === 'group') {
+        const group = e.target;
+        const clickedChild = e.subTargets && e.subTargets[0];
+        if (clickedChild) {
+          if (canvas._lastSelectedGroup === group) {
+            canvas.selectGroupChild(group, clickedChild);
+          } else {
+            canvas._lastSelectedGroup = group;
+          }
+        }
+      } else {
+        canvas._lastSelectedGroup = null;
+      }
     };
 
     const handleObjectMoving = async (e) => {
@@ -126,7 +252,7 @@ export function useCanvas({
       if (e.e && e.e.altKey && !hasDuplicatedOnAltDragRef.current && dragStartPosRef.current) {
         hasDuplicatedOnAltDragRef.current = true;
         try {
-          const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke']);
+          const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke', 'erasable']);
           cloned.set({
             left: dragStartPosRef.current.left,
             top: dragStartPosRef.current.top
@@ -197,6 +323,9 @@ export function useCanvas({
     };
 
     const handleSelectionCleared = () => {
+      if (canvas._editingGroup) {
+        canvas.commitGroupEditing();
+      }
       updateSelection();
       setIsRotating(false);
       setIsLocked(false);
@@ -244,6 +373,12 @@ export function useCanvas({
       );
 
       const activeObj = canvas.getActiveObject();
+      const vpt = canvas.viewportTransform || [1, 0, 0, 1, 0, 0];
+      const toScreenPt = (pt) => ({
+        x: vpt[0] * pt.x + vpt[4],
+        y: vpt[3] * pt.y + vpt[5]
+      });
+
       if (activeObj && activeObj.type === 'group') {
         const group = activeObj;
         const children = group.getObjects ? group.getObjects() : (group._objects || []);
@@ -256,11 +391,13 @@ export function useCanvas({
             const coords = getCanvasCoords(child);
             if (!coords) return;
 
+            const screenCoords = coords.map(toScreenPt);
+
             ctx.beginPath();
-            ctx.moveTo(coords[0].x, coords[0].y);
-            ctx.lineTo(coords[1].x, coords[1].y);
-            ctx.lineTo(coords[2].x, coords[2].y);
-            ctx.lineTo(coords[3].x, coords[3].y);
+            ctx.moveTo(screenCoords[0].x, screenCoords[0].y);
+            ctx.lineTo(screenCoords[1].x, screenCoords[1].y);
+            ctx.lineTo(screenCoords[2].x, screenCoords[2].y);
+            ctx.lineTo(screenCoords[3].x, screenCoords[3].y);
             ctx.closePath();
 
             ctx.strokeStyle = '#06b6d4';
@@ -279,7 +416,7 @@ export function useCanvas({
               ctx.setLineDash([]);
 
               const handleSize = 5;
-              coords.forEach((pt) => {
+              screenCoords.forEach((pt) => {
                 ctx.beginPath();
                 ctx.rect(pt.x - handleSize, pt.y - handleSize, handleSize * 2, handleSize * 2);
                 ctx.fill();
@@ -287,10 +424,10 @@ export function useCanvas({
               });
 
               const midpoints = [
-                { x: (coords[0].x + coords[1].x) / 2, y: (coords[0].y + coords[1].y) / 2 },
-                { x: (coords[1].x + coords[2].x) / 2, y: (coords[1].y + coords[2].y) / 2 },
-                { x: (coords[2].x + coords[3].x) / 2, y: (coords[2].y + coords[3].y) / 2 },
-                { x: (coords[3].x + coords[0].x) / 2, y: (coords[3].y + coords[0].y) / 2 }
+                { x: (screenCoords[0].x + screenCoords[1].x) / 2, y: (screenCoords[0].y + screenCoords[1].y) / 2 },
+                { x: (screenCoords[1].x + screenCoords[2].x) / 2, y: (screenCoords[1].y + screenCoords[2].y) / 2 },
+                { x: (screenCoords[2].x + screenCoords[3].x) / 2, y: (screenCoords[2].y + screenCoords[3].y) / 2 },
+                { x: (screenCoords[3].x + screenCoords[0].x) / 2, y: (screenCoords[3].y + screenCoords[0].y) / 2 }
               ];
 
               midpoints.forEach((pt, i) => {
@@ -308,17 +445,58 @@ export function useCanvas({
           ctx.restore();
         }
       }
+
+      // Draw overall group boundary box while editing a child inside a group
+      if (canvas._editingGroup) {
+        const { originalObjects } = canvas._editingGroup;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        originalObjects.forEach(obj => {
+          if (!canvas.getObjects().includes(obj)) return;
+          const coords = getCanvasCoords(obj);
+          if (coords) {
+            coords.forEach(pt => {
+              if (pt.x < minX) minX = pt.x;
+              if (pt.y < minY) minY = pt.y;
+              if (pt.x > maxX) maxX = pt.x;
+              if (pt.y > maxY) maxY = pt.y;
+            });
+          }
+        });
+
+        if (minX !== Infinity) {
+          const screenTL = toScreenPt({ x: minX, y: minY });
+          const screenBR = toScreenPt({ x: maxX, y: maxY });
+
+          ctx.save();
+          ctx.strokeStyle = '#06b6d4';
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          // Draw rect with padding
+          ctx.strokeRect(screenTL.x - 4, screenTL.y - 4, (screenBR.x - screenTL.x) + 8, (screenBR.y - screenTL.y) + 8);
+          ctx.restore();
+        }
+      }
     };
 
     const handleObjectAdded = (e) => {
       const obj = e.target;
+      if (obj) {
+        if (obj.isPaintStroke || obj.type === 'path') {
+          obj.erasable = true;
+        } else {
+          obj.erasable = false;
+        }
+      }
       if (obj && obj.type === 'image') {
         initializeImageObject(obj);
       }
       if (obj && (obj.type === 'path' || obj.isPaintStroke)) {
         return;
       }
-      if (!isHandlingHistoryRef.current) saveStateToHistory();
+      if (!isHandlingHistoryRef.current) {
+        const isInteractiveObject = obj && (obj.type === 'image' || obj.type === 'textbox');
+        saveStateToHistory(isInteractiveObject);
+      }
     };
 
     const handleObjectRemoved = () => {
@@ -337,15 +515,29 @@ export function useCanvas({
     canvas.on('after:render', handleAfterRender);
     canvas.on('object:added', handleObjectAdded);
     canvas.on('object:removed', handleObjectRemoved);
+    canvas.on('erasing:end', () => {
+      if (!isHandlingHistoryRef.current) {
+        saveStateToHistory(true);
+      }
+    });
     canvas.on('path:created', (e) => {
       if (e.path) {
+        if (canvas.freeDrawingBrush instanceof EraserBrush) {
+          e.path.isPaintStroke = false;
+          e.path.erasable = false;
+          if (!isHandlingHistoryRef.current) {
+            saveStateToHistory(true);
+          }
+          return;
+        }
         e.path.isPaintStroke = true;
+        e.path.erasable = true;
         if (showPaintPanelRef.current) {
           e.path.selectable = false;
           e.path.evented = false;
         }
         if (!isHandlingHistoryRef.current) {
-          saveStateToHistory();
+          saveStateToHistory(true);
         }
       }
     });
@@ -354,7 +546,7 @@ export function useCanvas({
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, []);
+  }, [step]);
 
   useEffect(() => {
     if (!fabricRef.current) return;

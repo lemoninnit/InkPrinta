@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { FabricImage } from 'fabric';
 import { initializeImageObject } from '../utils/helpers.js';
 
-export default function ImageModal({ isOpen, onClose, fabricRef }) {
+export default function ImageModal({ isOpen, onClose, fabricRef, onForceSave }) {
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
@@ -41,6 +41,7 @@ export default function ImageModal({ isOpen, onClose, fabricRef }) {
         fabricRef.current.add(fabricImage);
         fabricRef.current.setActiveObject(fabricImage);
         fabricRef.current.renderAll();
+        onForceSave?.();
         
         // Close panel and clean up
         onClose();
@@ -50,7 +51,7 @@ export default function ImageModal({ isOpen, onClose, fabricRef }) {
         console.error('Failed to load image:', err);
       });
     }
-  }, [fabricRef, onClose]);
+  }, [fabricRef, onClose, onForceSave]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,

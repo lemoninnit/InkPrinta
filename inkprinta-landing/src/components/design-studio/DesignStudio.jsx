@@ -7,6 +7,7 @@ import { useImageTools } from './hooks/useImageTools.js';
 import { useCanvas } from './hooks/useCanvas.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 import { PencilBrush, Group, ActiveSelection } from 'fabric';
+import { EraserBrush } from '@erase2d/fabric';
 import { PaintbrushBrush } from './utils/PaintbrushBrush.js';
 import { styleTextboxControls, initializeImageObject } from './utils/helpers.js';
 import Header from './layout/Header.jsx';
@@ -19,10 +20,15 @@ import ImageModal from './modals/ImageModal.jsx';
 import PaintModal from './modals/PaintModal.jsx';
 import StampModal from './modals/StampModal.jsx';
 import LayersPanel from './modals/LayersPanel.jsx';
+import PreviewStep from './PreviewStep.jsx';
+import OrderStep from './OrderStep.jsx';
 
 export default function DesignStudio() {
   const canvasRef = useRef(null);
   const fabricRef = useRef(null);
+
+  const [step, setStep] = useState('design');
+  const [designImage, setDesignImage] = useState(null);
 
   const [activeTab, setActiveTab] = useState('Product');
   const [showProductPanel, setShowProductPanel] = useState(false);
@@ -34,7 +40,14 @@ export default function DesignStudio() {
   const [brushColor, setBrushColor] = useState('#000000');
   const [brushSize, setBrushSize] = useState(3);
   const [brushOpacity, setBrushOpacity] = useState(1.0);
-  const [currentProduct, setCurrentProduct] = useState(PRODUCTS[0]);
+  const [currentProduct, setCurrentProduct] = useState(() => {
+    const savedProductId = localStorage.getItem('inkprinta_current_product');
+    if (savedProductId) {
+      const prod = PRODUCTS.find((p) => p.id === savedProductId);
+      if (prod) return prod;
+    }
+    return PRODUCTS[0];
+  });
   const [showLayersPanel, setShowLayersPanel] = useState(false);
 
   const { zoom, viewportRef, zoomOut, zoomIn, resetZoom } = useZoom();
@@ -44,9 +57,59 @@ export default function DesignStudio() {
     redoStackRef,
     isHandlingHistoryRef,
     saveStateToHistory,
+    forceSaveToLocalStorage,
+    saveStatus,
     handleUndo,
     handleRedo
   } = useHistory(fabricRef);
+
+  useEffect(() => {
+    if (currentProduct) {
+      localStorage.setItem('inkprinta_current_product', currentProduct.id);
+      forceSaveToLocalStorage();
+    }
+  }, [currentProduct]);
+
+  const handleEnterPreview = () => {
+    if (fabricRef.current) {
+      fabricRef.current.discardActiveObject();
+      fabricRef.current.renderAll();
+      
+      // Force save the current design state to localStorage immediately
+      forceSaveToLocalStorage();
+
+      const dataUrl = fabricRef.current.toDataURL({
+        format: 'png',
+        multiplier: 2
+      });
+      setDesignImage(dataUrl);
+    }
+    // Close all design panels
+    setShowProductPanel(false);
+    setShowTextPanel(false);
+    setShowImagePanel(false);
+    setShowPaintPanel(false);
+    setShowStampPanel(false);
+    setShowLayersPanel(false);
+    
+    setStep('preview');
+  };
+
+  const handleSetStep = (newStep) => {
+    // Close all design panels
+    setShowProductPanel(false);
+    setShowTextPanel(false);
+    setShowImagePanel(false);
+    setShowPaintPanel(false);
+    setShowStampPanel(false);
+    setShowLayersPanel(false);
+
+    if (newStep === 'preview') {
+      handleEnterPreview();
+    } else {
+      setStep(newStep);
+    }
+  };
 
   const textTools = useTextTools(fabricRef, saveStateToHistory);
   const imageTools = useImageTools(fabricRef, saveStateToHistory);
@@ -59,7 +122,7 @@ export default function DesignStudio() {
     const activeObj = fabricRef.current.getActiveObject();
     if (!activeObj) return;
     try {
-      const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke']);
+      const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke', 'erasable']);
       clipboardRef.current = cloned;
     } catch (err) {
       console.error('Failed to copy object:', err);
@@ -70,7 +133,7 @@ export default function DesignStudio() {
     if (!fabricRef.current || !clipboardRef.current) return;
     const canvas = fabricRef.current;
     try {
-      const clonedObj = await clipboardRef.current.clone(['rx', 'ry', 'isPaintStroke']);
+      const clonedObj = await clipboardRef.current.clone(['rx', 'ry', 'isPaintStroke', 'erasable']);
       canvas.discardActiveObject();
       clonedObj.set({
         left: clonedObj.left + 24,
@@ -156,6 +219,19 @@ export default function DesignStudio() {
   const handleGroup = () => {
     const canvas = fabricRef.current;
     if (!canvas) return;
+
+    if (canvas._editingGroup) {
+      const { originalObjects } = canvas._editingGroup;
+      canvas._editingGroup = null;
+
+      const activeSelection = new ActiveSelection(originalObjects, { canvas });
+      canvas.setActiveObject(activeSelection);
+      canvas.requestRenderAll();
+      saveStateToHistory();
+      syncSelectionAfterHistory();
+      return;
+    }
+
     const activeObj = canvas.getActiveObject();
     if (!activeObj) return;
 
@@ -163,14 +239,11 @@ export default function DesignStudio() {
 
     if (isMultiple) {
       const objects = activeObj.getObjects();
-      // Deselect first to release controls
       canvas.discardActiveObject();
-      // Remove individual items from canvas
       objects.forEach((obj) => canvas.remove(obj));
 
-      // Create new Group with extracted items
       const group = new Group(objects, {
-        subTargetCheck: false,
+        subTargetCheck: true,
         interactive: false
       });
 
@@ -180,14 +253,10 @@ export default function DesignStudio() {
       saveStateToHistory();
       syncSelectionAfterHistory();
     } else if (activeObj.type === 'group') {
-      // Remove group object
       canvas.remove(activeObj);
-      // Remove all elements from the group structure
       const items = activeObj.removeAll();
-      // Add individual elements back to canvas
       canvas.add(...items);
 
-      // Create and set active selection to mimic Canva's ungroup selection behavior
       const activeSelection = new ActiveSelection(items, { canvas });
       canvas.setActiveObject(activeSelection);
       canvas.requestRenderAll();
@@ -200,17 +269,14 @@ export default function DesignStudio() {
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    // Clear child selections on all other groups
-    canvas.getObjects().forEach(o => {
-      if (o.type === 'group' && o !== obj.group) {
-        o._selectedChild = null;
-      }
-    });
-
     if (obj.group) {
-      obj.group._selectedChild = obj;
-      canvas.setActiveObject(obj.group);
+      if (typeof canvas.selectGroupChild === 'function') {
+        canvas.selectGroupChild(obj.group, obj);
+      }
     } else {
+      if (typeof canvas.commitGroupEditing === 'function') {
+        canvas.commitGroupEditing();
+      }
       canvas.setActiveObject(obj);
     }
 
@@ -237,7 +303,8 @@ export default function DesignStudio() {
     setRotationAngle: textTools.setRotationAngle,
     syncTextFromObject: textTools.syncTextFromObject,
     syncImageFromObject: imageTools.syncImageFromObject,
-    showPaintPanel
+    showPaintPanel,
+    step
   });
 
   useKeyboardShortcuts({
@@ -285,7 +352,7 @@ export default function DesignStudio() {
       setShowPaintPanel((prev) => {
         const next = !prev;
         if (next && fabricRef.current) {
-          const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke']);
+          const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke', 'erasable']);
           paintStartHistoryStateRef.current = JSON.stringify(json);
         }
         return next;
@@ -352,6 +419,33 @@ export default function DesignStudio() {
     }
   };
 
+  const handleStartOver = () => {
+    if (!fabricRef.current) return;
+    const canvas = fabricRef.current;
+    canvas.discardActiveObject();
+    const objects = canvas.getObjects();
+    while (objects.length > 0) {
+      canvas.remove(objects[0]);
+    }
+    canvas.backgroundColor = 'transparent';
+    canvas.renderAll();
+    
+    // Completely clear history stacks to prevent restoring or saving old state
+    undoStackRef.current = [];
+    redoStackRef.current = [];
+    
+    // Clear draft from localStorage
+    localStorage.removeItem('inkprinta_design_draft');
+    
+    // Push the clean empty canvas state as the fresh initial state
+    saveStateToHistory(true);
+  };
+
+
+
+
+
+
   const hexToRgba = (hex, opacity) => {
     if (!hex) return `rgba(0, 0, 0, ${opacity})`;
     const cleanHex = hex.replace(/^#/, '');
@@ -382,7 +476,7 @@ export default function DesignStudio() {
   useEffect(() => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
-    canvas.isDrawingMode = showPaintPanel && activeTool !== 'eraser';
+    canvas.isDrawingMode = showPaintPanel;
     canvas.selection = !showPaintPanel;
 
     if (showPaintPanel) {
@@ -402,6 +496,25 @@ export default function DesignStudio() {
         canvas.freeDrawingBrush.color = brushColor;
         canvas.freeDrawingBrush.width = brushSize;
         canvas.freeDrawingBrush.opacity = brushOpacity;
+      } else if (activeTool === 'eraser') {
+        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof EraserBrush)) {
+          const eraser = new EraserBrush(canvas);
+          const originalCommit = eraser.commit.bind(eraser);
+          eraser.commit = async (...args) => {
+            const result = await originalCommit(...args);
+            if (!isHandlingHistoryRef.current) {
+              saveStateToHistory();
+            }
+            return result;
+          };
+          eraser.on('end', () => {
+            if (!isHandlingHistoryRef.current) {
+              saveStateToHistory();
+            }
+          });
+          canvas.freeDrawingBrush = eraser;
+        }
+        canvas.freeDrawingBrush.width = brushSize;
       } else {
         if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PencilBrush)) {
           canvas.freeDrawingBrush = new PencilBrush(canvas);
@@ -424,193 +537,90 @@ export default function DesignStudio() {
     }
   }, [showPaintPanel, activeTool, brushColor, brushSize, brushOpacity]);
 
-  const isErasingRef = useRef(false);
-  const lastEraserPosRef = useRef(null);
-  const eraserChangedRef = useRef(false);
 
-  useEffect(() => {
-    if (!fabricRef.current) return;
-    const canvas = fabricRef.current;
-
-    const handleMouseDown = (opt) => {
-      if (showPaintPanel && activeTool === 'eraser') {
-        isErasingRef.current = true;
-        eraserChangedRef.current = false;
-        const pointer = canvas.getScenePoint(opt.e);
-        lastEraserPosRef.current = pointer;
-        eraseAtPointer(pointer);
-      }
-    };
-
-    const handleMouseMove = (opt) => {
-      if (showPaintPanel && activeTool === 'eraser' && isErasingRef.current) {
-        eraseAtPointer(canvas.getScenePoint(opt.e));
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (showPaintPanel && activeTool === 'eraser') {
-        isErasingRef.current = false;
-        lastEraserPosRef.current = null;
-        if (eraserChangedRef.current) {
-          saveStateToHistory();
-          eraserChangedRef.current = false;
-        }
-      }
-    };
-
-    const eraseAtPointer = (pointer) => {
-      const objects = canvas.getObjects();
-      let changed = false;
-
-      const pointsToCheck = [];
-      if (lastEraserPosRef.current) {
-        const p1 = lastEraserPosRef.current;
-        const p2 = pointer;
-        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
-        const steps = Math.max(1, Math.floor(dist / 4)); // Check every 4px for higher precision
-        for (let i = 0; i <= steps; i++) {
-          const t = i / steps;
-          pointsToCheck.push({
-            x: p1.x + (p2.x - p1.x) * t,
-            y: p1.y + (p2.y - p1.y) * t
-          });
-        }
-      } else {
-        pointsToCheck.push(pointer);
-      }
-
-      lastEraserPosRef.current = pointer;
-      
-      for (let i = objects.length - 1; i >= 0; i--) {
-        const obj = objects[i];
-        if (obj.isPaintStroke) {
-          const isNear = pointsToCheck.some((p) => isPointerNearPath(p, obj));
-          if (isNear) {
-            canvas.remove(obj);
-            changed = true;
-            eraserChangedRef.current = true;
-          }
-        }
-      }
-      
-      if (changed) {
-        canvas.renderAll();
-      }
-    };
-
-    const isPointerNearPath = (pointer, pathObj, threshold = 15) => {
-      if (!pathObj.path) return false;
-      
-      const halfSize = brushSize / 2;
-      const adaptiveThreshold = Math.max(threshold, halfSize);
-      
-      const bounds = pathObj.getBoundingRect(true);
-      if (
-        pointer.x < bounds.left - adaptiveThreshold ||
-        pointer.x > bounds.left + bounds.width + adaptiveThreshold ||
-        pointer.y < bounds.top - adaptiveThreshold ||
-        pointer.y > bounds.top + bounds.height + adaptiveThreshold
-      ) {
-        return false;
-      }
-      
-      const matrix = pathObj.calcTransformMatrix();
-      const pathOffset = pathObj.pathOffset || { x: 0, y: 0 };
-      
-      for (const segment of pathObj.path) {
-        for (let i = 1; i < segment.length; i += 2) {
-          const px = segment[i];
-          const py = segment[i + 1];
-          if (typeof px === 'number' && typeof py === 'number') {
-            const lx = px - pathOffset.x;
-            const ly = py - pathOffset.y;
-            
-            const gx = matrix[0] * lx + matrix[2] * ly + matrix[4];
-            const gy = matrix[1] * lx + matrix[3] * ly + matrix[5];
-            
-            const dist = Math.hypot(pointer.x - gx, pointer.y - gy);
-            if (dist <= adaptiveThreshold + (pathObj.strokeWidth || 0) / 2) {
-              return true;
-            }
-          }
-        }
-      }
-      return false;
-    };
-
-    canvas.on('mouse:down', handleMouseDown);
-    canvas.on('mouse:move', handleMouseMove);
-    canvas.on('mouse:up', handleMouseUp);
-
-    return () => {
-      canvas.off('mouse:down', handleMouseDown);
-      canvas.off('mouse:move', handleMouseMove);
-      canvas.off('mouse:up', handleMouseUp);
-    };
-  }, [showPaintPanel, activeTool, brushSize]);
 
   return (
     <div className="h-screen w-full flex flex-col bg-slate-50 text-slate-900 font-sans selection:bg-cyan-100 relative overflow-hidden">
-      <Header />
+      <Header step={step} setStep={handleSetStep} />
 
-      <main
-        ref={viewportRef}
-        className="flex-1 w-full relative overflow-auto z-0 flex flex-col items-center justify-start p-6 scrollbar-thin select-none"
-        style={{
-          backgroundColor: '#f8fafc',
-          backgroundImage: 'radial-gradient(#e2e8f0 1.5px, transparent 1.5px)',
-          backgroundSize: '24px 24px'
-        }}
-      >
-        <StickyHeaderControls
-          textTools={textTools}
-          imageTools={imageTools}
-          undoStackRef={undoStackRef}
-          redoStackRef={redoStackRef}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          zoom={zoom}
-          onZoomOut={zoomOut}
-          onZoomIn={zoomIn}
-          onResetZoom={resetZoom}
-        />
-
-        <CanvasArea
-          canvasRef={canvasRef}
+      {step === 'preview' ? (
+        <PreviewStep
+          designImage={designImage}
           currentProduct={currentProduct}
-          zoom={zoom}
-          activeObject={textTools.activeObject}
-          coords={textTools.coords}
-          isRotating={textTools.isRotating}
-          rotationAngle={textTools.rotationAngle}
-          isLocked={textTools.isLocked}
-          isAdjusting={imageTools.isSliding}
-          onToggleLock={textTools.handleToggleLock}
-          onDuplicate={textTools.handleDuplicate}
-          onDelete={textTools.handleDelete}
-          imageTools={imageTools}
-          showPaintPanel={showPaintPanel}
-          activeTool={activeTool}
-          brushSize={brushSize}
-          onBringToFront={handleBringToFront}
-          onBringForward={handleBringForward}
-          onSendBackward={handleSendBackward}
-          onSendToBack={handleSendToBack}
-          onToggleLayersPanel={handleToggleLayersPanel}
-          onGroup={handleGroup}
+          setStep={handleSetStep}
         />
-      </main>
+      ) : step === 'order' ? (
+        <OrderStep
+          designImage={designImage}
+          currentProduct={currentProduct}
+          setStep={handleSetStep}
+          onClearCanvas={handleStartOver}
+        />
+      ) : (
+        <>
+          <main
+            ref={viewportRef}
+            className="flex-1 w-full relative overflow-auto z-0 flex flex-col items-center justify-start p-6 scrollbar-thin select-none"
+            style={{
+              backgroundColor: '#f8fafc',
+              backgroundImage: 'radial-gradient(#e2e8f0 1.5px, transparent 1.5px)',
+              backgroundSize: '24px 24px'
+            }}
+          >
+            <StickyHeaderControls
+              textTools={textTools}
+              imageTools={imageTools}
+              undoStackRef={undoStackRef}
+              redoStackRef={redoStackRef}
+              onUndo={onUndo}
+              onRedo={onRedo}
+              zoom={zoom}
+              onZoomOut={zoomOut}
+              onZoomIn={zoomIn}
+              onResetZoom={resetZoom}
+              saveStatus={saveStatus}
+              onForceSave={forceSaveToLocalStorage}
+            />
 
-      <Footer
-        activeTab={activeTab}
-        showProductPanel={showProductPanel}
-        showTextPanel={showTextPanel}
-        showImagePanel={showImagePanel}
-        showPaintPanel={showPaintPanel}
-        showStampPanel={showStampPanel}
-        onTabClick={handleTabClick}
-      />
+            <CanvasArea
+              canvasRef={canvasRef}
+              currentProduct={currentProduct}
+              zoom={zoom}
+              activeObject={textTools.activeObject}
+              coords={textTools.coords}
+              isRotating={textTools.isRotating}
+              rotationAngle={textTools.rotationAngle}
+              isLocked={textTools.isLocked}
+              isAdjusting={imageTools.isSliding}
+              onToggleLock={textTools.handleToggleLock}
+              onDuplicate={textTools.handleDuplicate}
+              onDelete={textTools.handleDelete}
+              imageTools={imageTools}
+              showPaintPanel={showPaintPanel}
+              activeTool={activeTool}
+              brushSize={brushSize}
+              onBringToFront={handleBringToFront}
+              onBringForward={handleBringForward}
+              onSendBackward={handleSendBackward}
+              onSendToBack={handleSendToBack}
+              onToggleLayersPanel={handleToggleLayersPanel}
+              onGroup={handleGroup}
+              isEditingGroup={fabricRef.current && !!fabricRef.current._editingGroup}
+            />
+          </main>
+
+          <Footer
+            activeTab={activeTab}
+            showProductPanel={showProductPanel}
+            showTextPanel={showTextPanel}
+            showImagePanel={showImagePanel}
+            showPaintPanel={showPaintPanel}
+            showStampPanel={showStampPanel}
+            onTabClick={handleTabClick}
+            onPreview={handleEnterPreview}
+          />
+        </>
+      )}
 
       <ProductModal
         isOpen={showProductPanel}
@@ -645,6 +655,7 @@ export default function DesignStudio() {
         isOpen={showImagePanel}
         onClose={() => setShowImagePanel(false)}
         fabricRef={fabricRef}
+        onForceSave={forceSaveToLocalStorage}
       />
 
       <PaintModal

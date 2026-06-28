@@ -11,9 +11,28 @@ export function useHistory(fabricRef) {
     setHistoryTrigger((prev) => prev + 1);
   };
 
-  const saveStateToHistory = () => {
+  const [saveStatus, setSaveStatus] = useState('saved');
+  const saveTimeoutRef = useRef(null);
+
+  const forceSaveToLocalStorage = () => {
+    if (!fabricRef.current) return;
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke', 'erasable']);
+    const jsonStr = JSON.stringify(json);
+    try {
+      localStorage.setItem('inkprinta_design_draft', jsonStr);
+      setSaveStatus('saved');
+    } catch (err) {
+      console.error('Failed to force-save design draft to localStorage:', err);
+    }
+  };
+
+  const saveStateToHistory = (force = false) => {
     if (!fabricRef.current || isHandlingHistoryRef.current) return;
-    const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke']);
+    const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke', 'erasable']);
     const jsonStr = JSON.stringify(json);
     if (undoStackRef.current.length > 0 && undoStackRef.current[undoStackRef.current.length - 1] === jsonStr) {
       return;
@@ -24,6 +43,31 @@ export function useHistory(fabricRef) {
     }
     redoStackRef.current = [];
     triggerRender();
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+
+    if (force) {
+      setSaveStatus('saved');
+      try {
+        localStorage.setItem('inkprinta_design_draft', jsonStr);
+      } catch (err) {
+        console.error('Failed to force-save design draft to localStorage:', err);
+      }
+    } else {
+      setSaveStatus('saving');
+      saveTimeoutRef.current = setTimeout(() => {
+        try {
+          localStorage.setItem('inkprinta_design_draft', jsonStr);
+          setSaveStatus('saved');
+        } catch (err) {
+          console.error('Failed to auto-save design draft to localStorage:', err);
+          setSaveStatus('saved');
+        }
+      }, 500);
+    }
   };
 
   const restoreFromJson = (stateJson, onComplete) => {
@@ -75,12 +119,13 @@ export function useHistory(fabricRef) {
       triggerRender();
     });
   };
-
   return {
     undoStackRef,
     redoStackRef,
     isHandlingHistoryRef,
     saveStateToHistory,
+    forceSaveToLocalStorage,
+    saveStatus,
     handleUndo,
     handleRedo
   };

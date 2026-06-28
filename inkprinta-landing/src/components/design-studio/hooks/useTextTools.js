@@ -178,7 +178,7 @@ export function useTextTools(fabricRef, saveStateToHistory) {
     if (!activeObj) return;
 
     try {
-      const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke']);
+      const cloned = await activeObj.clone(['rx', 'ry', 'isPaintStroke', 'erasable']);
       cloned.set({
         left: activeObj.left + 24,
         top: activeObj.top + 24

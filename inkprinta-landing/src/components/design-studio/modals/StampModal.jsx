@@ -178,7 +178,7 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
         canvas.setActiveObject(fabricImage);
         canvas.renderAll();
 
-        saveStateToHistory();
+        saveStateToHistory(true);
         onClose();
       })
       .catch((err) => {

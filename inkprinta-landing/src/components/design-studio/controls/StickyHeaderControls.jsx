@@ -13,7 +13,9 @@ export default function StickyHeaderControls({
   zoom,
   onZoomOut,
   onZoomIn,
-  onResetZoom
+  onResetZoom,
+  saveStatus,
+  onForceSave
 }) {
   return (
     <div className="sticky top-0 w-full max-w-[1168px] flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 z-20 bg-white/70 backdrop-blur-xl py-3 px-5 rounded-3xl border border-white/50 shadow-[0_8px_32px_rgba(31,38,135,0.04)] flex-shrink-0">
@@ -90,6 +92,32 @@ export default function StickyHeaderControls({
       </div>
 
       <div className="flex items-center gap-3 flex-shrink-0">
+        <button
+          onClick={onForceSave}
+          className={`px-4 h-8 border text-[10px] font-black uppercase tracking-wider rounded-full shadow-sm hover:shadow transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer select-none ${
+            saveStatus === 'saved'
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-600 hover:bg-emerald-100/80 hover:border-emerald-200'
+              : 'bg-amber-50 border-amber-100 text-amber-600 hover:bg-amber-100/80 hover:border-amber-200 animate-pulse'
+          }`}
+          title={saveStatus === 'saved' ? 'All changes saved to draft' : 'Saving changes...'}
+          type="button"
+        >
+          {saveStatus === 'saved' ? (
+            <>
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <path d="m5 12 4 4L19 7" />
+              </svg>
+              Saved
+            </>
+          ) : (
+            <>
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+              </svg>
+              Saving...
+            </>
+          )}
+        </button>
         <HistoryControls
           undoStackRef={undoStackRef}
           redoStackRef={redoStackRef}

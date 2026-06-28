@@ -8,6 +8,68 @@ const PAINT_COLORS = [
   '#ff007f', '#fdba74', '#fef08a', '#86efac', '#7dd3fc', '#c084fc'  // Row 5
 ];
 
+const getTaperedWavePath = (width) => {
+  const N = 40;
+  const points = [];
+  
+  const getPt1 = (t) => {
+    const x = (1-t)*(1-t)*20 + 2*(1-t)*t*80 + t*t*150;
+    const y = (1-t)*(1-t)*20 + 2*(1-t)*t*5 + t*t*20;
+    return { x, y };
+  };
+  
+  const getPt2 = (t) => {
+    const x = (1-t)*(1-t)*150 + 2*(1-t)*t*220 + t*t*280;
+    const y = (1-t)*(1-t)*20 + 2*(1-t)*t*35 + t*t*20;
+    return { x, y };
+  };
+
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    let pt;
+    let dx, dy;
+    
+    if (t <= 0.5) {
+      const localT = t * 2;
+      pt = getPt1(localT);
+      dx = 2 * (1 - localT) * (80 - 20) + 2 * localT * (150 - 80);
+      dy = 2 * (1 - localT) * (5 - 20) + 2 * localT * (20 - 5);
+    } else {
+      const localT = (t - 0.5) * 2;
+      pt = getPt2(localT);
+      dx = 2 * (1 - localT) * (220 - 150) + 2 * localT * (280 - 220);
+      dy = 2 * (1 - localT) * (35 - 20) + 2 * localT * (20 - 35);
+    }
+    
+    const taper = Math.sin(t * Math.PI);
+    const w = width * taper;
+    
+    const len = Math.hypot(dx, dy) || 0.001;
+    const nx = -dy / len;
+    const ny = dx / len;
+    
+    points.push({ x: pt.x, y: pt.y, nx, ny, w });
+  }
+  
+  const leftPoints = [];
+  const rightPoints = [];
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    leftPoints.push({ x: p.x + p.nx * p.w / 2, y: p.y + p.ny * p.w / 2 });
+    rightPoints.push({ x: p.x - p.nx * p.w / 2, y: p.y - p.ny * p.w / 2 });
+  }
+  
+  let pathD = `M ${leftPoints[0].x.toFixed(2)} ${leftPoints[0].y.toFixed(2)}`;
+  for (let i = 1; i < leftPoints.length; i++) {
+    pathD += ` L ${leftPoints[i].x.toFixed(2)} ${leftPoints[i].y.toFixed(2)}`;
+  }
+  for (let i = rightPoints.length - 1; i >= 0; i--) {
+    pathD += ` L ${rightPoints[i].x.toFixed(2)} ${rightPoints[i].y.toFixed(2)}`;
+  }
+  pathD += ' Z';
+  return pathD;
+};
+
 export default function PaintModal({
   isOpen,
   onClose,
@@ -40,7 +102,7 @@ export default function PaintModal({
             {/* Header */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex flex-col">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Paint Studio</h4>
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest">Paint</h4>
                 <p className="text-[10px] text-slate-400 font-bold mt-0.5">Draw free-hand designs directly on your canvas</p>
               </div>
               
@@ -76,9 +138,8 @@ export default function PaintModal({
                 }`}
                 type="button"
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122l9.37-9.37a2.25 2.25 0 113.182 3.182l-9.37 9.37a4.5 4.5 0 01-2.25 1.22l-3.136.627a1.125 1.125 0 01-1.327-1.327l.627-3.136a4.5 4.5 0 011.22-2.25z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.5 6.5L17.5 9.5" />
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 512 512">
+                  <path d="M167.02 309.34c-40.12 2.58-76.53 17.86-97.19 72.3-2.35 6.21-8 9.98-14.59 9.98-11.11 0-45.46-27.67-55.25-34.35C0 439.62 37.93 512 128 512c75.86 0 128-43.77 128-120.19 0-3.11-.65-6.08-.97-9.13l-88.01-73.34zM457.89 0c-15.16 0-29.37 6.71-40.21 16.45C213.27 199.05 192 203.34 192 257.09c0 13.7 3.25 26.76 8.73 38.7l63.82 53.18c7.14 5.95 16 9.03 25.1 9.03H384c25.4 0 54.57-27.76 60.19-54.58L495.55 40c3.27-15.53-6.01-31.02-21.66-34.31A32.557 32.557 0 0 0 457.89 0z"/>
                 </svg>
                 Brush
               </button>
@@ -142,6 +203,15 @@ export default function PaintModal({
                     />
                     <span>Eraser Width ({brushSize}px)</span>
                   </div>
+                ) : activeTool === 'brush' ? (
+                  <svg className="w-full h-full px-4" viewBox="0 0 300 40">
+                    <path
+                      d={getTaperedWavePath(Math.min(brushSize, 25))}
+                      fill={brushColor}
+                      opacity={brushOpacity}
+                      className="transition-all duration-150"
+                    />
+                  </svg>
                 ) : (
                   <svg className="w-full h-full px-4" viewBox="0 0 300 40">
                     <path
