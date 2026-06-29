@@ -66,7 +66,7 @@ export default function TextFormatToolbar({
             setShowFontDropdown(!showFontDropdown);
           }}
           onClose={() => setShowFontDropdown(false)}
-          triggerClassName="px-3.5 py-2 bg-white/40 border border-white/60 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer min-w-[150px] shadow-sm hover:border-white hover:bg-white/60 transition-all flex items-center justify-between gap-2 h-9"
+          triggerClassName="px-3.5 py-2 bg-white/40 border border-white/60 rounded-xl text-xs font-bold text-slate-700 focus:outline-none cursor-pointer min-w-[180px] max-w-[220px] shadow-sm hover:border-white hover:bg-white/60 transition-all flex items-center justify-between gap-2 h-9 whitespace-nowrap overflow-hidden"
         />
         <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
           Font Family

@@ -4,13 +4,13 @@ import { FabricImage } from 'fabric';
 import { initializeImageObject } from '../utils/helpers.js';
 
 const CATEGORIES = [
-  { id: 'emojis', label: '😀 Emojis' },
-  { id: 'spongebob', label: '🧽 SpongeBob' },
-  { id: 'pokemon', label: '⚡ Pokémon' },
-  { id: 'anime', label: '🉐 Anime' },
-  { id: 'animals', label: '🐱 Animals' },
-  { id: 'cartoons', label: '🎨 Cartoons' },
-  { id: 'memes', label: '😂 Memes' }
+  { id: 'emojis', label: 'Emojis' },
+  { id: 'spongebob', label: 'SpongeBob' },
+  { id: 'pokemon', label: 'Pokémon' },
+  { id: 'anime', label: 'Anime' },
+  { id: 'animals', label: 'Animals' },
+  { id: 'cartoons', label: 'Cartoons' },
+  { id: 'memes', label: 'Memes' }
 ];
 
 const BLACKLIST_KEYWORDS = [
@@ -517,19 +517,20 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
             </div>
           </div>
 
-          {/* Preset Category Chips */}
-          <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-thin select-none max-w-full">
+          {/* Preset Category Chips — 2-row grid, all visible */}
+          <div className="grid grid-cols-4 gap-1.5 select-none">
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCategory === cat.id;
               return (
                 <button
                   key={cat.id}
                   onClick={() => handleCategoryClick(cat.id)}
-                  className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer ${isSelected
-                    ? 'bg-cyan-600 text-white shadow-sm border border-cyan-600'
-                    : 'bg-slate-50 text-slate-400 border border-slate-100 hover:text-slate-600 hover:bg-slate-100/50'
+                  className={`px-2.5 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wide transition-all duration-200 cursor-pointer text-center truncate ${isSelected
+                      ? 'bg-cyan-600 text-white shadow-sm border border-cyan-600'
+                      : 'bg-slate-50 text-slate-400 border border-slate-100 hover:text-slate-600 hover:bg-slate-100/50'
                     }`}
                   type="button"
+                  title={cat.label}
                 >
                   {cat.label}
                 </button>
