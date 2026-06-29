@@ -69,8 +69,9 @@ export function useTextTools(fabricRef, saveStateToHistory) {
     saveStateToHistory?.();
   };
 
-  const handleFontSizeChange = (newSize) => {
-    const size = Math.max(8, Math.min(200, newSize));
+  const handleFontSizeChange = (newSize, clampMin = true) => {
+    const minVal = clampMin ? 8 : 1;
+    const size = Math.max(minVal, Math.min(200, newSize));
     setFontSize(size);
     updateActiveObjectProp('fontSize', size);
   };
@@ -201,13 +202,37 @@ export function useTextTools(fabricRef, saveStateToHistory) {
 
   const handleDelete = () => {
     if (!fabricRef.current) return;
-    const activeObj = fabricRef.current.getActiveObject();
-    if (activeObj && !activeObj.lockMovementX) {
-      fabricRef.current.remove(activeObj);
-      fabricRef.current.discardActiveObject();
-      fabricRef.current.renderAll();
+    const canvas = fabricRef.current;
+    const activeObj = canvas.getActiveObject();
+    if (!activeObj) return;
+
+    const isMultiple = activeObj.type === 'activeSelection' ||
+                       activeObj.type === 'active-selection' ||
+                       (activeObj._objects && activeObj.type !== 'group');
+
+    if (isMultiple) {
+      const objects = activeObj.getObjects ? [...activeObj.getObjects()] : (activeObj._objects ? [...activeObj._objects] : []);
+      canvas.isBatchDeleting = true;
+      canvas.discardActiveObject();
+      objects.forEach((obj) => {
+        if (!obj.lockMovementX) {
+          canvas.remove(obj);
+        }
+      });
+      canvas.isBatchDeleting = false;
+      canvas.requestRenderAll();
       setActiveObject(null);
       setCoords(null);
+      saveStateToHistory?.(true);
+    } else {
+      if (!activeObj.lockMovementX) {
+        canvas.remove(activeObj);
+        canvas.discardActiveObject();
+        canvas.requestRenderAll();
+        setActiveObject(null);
+        setCoords(null);
+        saveStateToHistory?.();
+      }
     }
   };
 

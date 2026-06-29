@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import FontDropdown from '../shared/FontDropdown.jsx';
 import ColorPicker from '../shared/ColorPicker.jsx';
 
@@ -37,6 +38,14 @@ export default function TextFormatToolbar({
   onOpacityChange,
   onColorSquareMouseDown
 }) {
+  const [localFontSize, setLocalFontSize] = useState(String(fontSize));
+
+  useEffect(() => {
+    if (document.activeElement?.getAttribute('data-input') !== 'font-size') {
+      setLocalFontSize(String(fontSize));
+    }
+  }, [fontSize]);
+
   if (!activeObject || activeObject.type !== 'textbox') return null;
 
   const closeOtherPopovers = (except) => {
@@ -69,8 +78,12 @@ export default function TextFormatToolbar({
       <div className="flex items-center bg-white/40 border border-white/60 rounded-xl overflow-hidden h-9 shadow-sm focus-within:border-white focus-within:bg-white/60 transition-all">
         <div className="relative group/tooltip h-full flex items-center">
           <button
-            onClick={() => onFontSizeChange(fontSize - 1)}
-            className="px-2.5 h-full hover:bg-white/50 text-slate-500 hover:text-slate-800 font-extrabold text-sm transition-colors border-r border-white/40"
+            onClick={() => {
+              const next = Math.max(8, fontSize - 1);
+              setLocalFontSize(String(next));
+              onFontSizeChange(next, true);
+            }}
+            className="px-2.5 h-full hover:bg-white/50 text-slate-500 hover:text-slate-800 font-extrabold text-sm transition-colors border-r border-white/40 cursor-pointer"
             type="button"
           >
             -
@@ -79,15 +92,38 @@ export default function TextFormatToolbar({
         <div className="relative group/tooltip h-full flex items-center">
           <input
             type="number"
-            value={fontSize}
-            onChange={(e) => onFontSizeChange(parseInt(e.target.value, 10) || 12)}
+            data-input="font-size"
+            value={localFontSize}
+            onChange={(e) => {
+              const val = e.target.value;
+              setLocalFontSize(val);
+              const parsed = parseInt(val, 10);
+              if (!isNaN(parsed) && parsed > 0) {
+                onFontSizeChange(parsed, false);
+              }
+            }}
+            onBlur={() => {
+              const parsed = parseInt(localFontSize, 10);
+              let clamped = 12;
+              if (!isNaN(parsed)) {
+                clamped = Math.max(8, Math.min(200, parsed));
+              } else {
+                clamped = Math.max(8, Math.min(200, fontSize));
+              }
+              setLocalFontSize(String(clamped));
+              onFontSizeChange(clamped, true);
+            }}
             className="w-10 text-center bg-transparent text-xs font-extrabold text-slate-800 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           />
         </div>
         <div className="relative group/tooltip h-full flex items-center">
           <button
-            onClick={() => onFontSizeChange(fontSize + 1)}
-            className="px-2.5 h-full hover:bg-white/50 text-slate-500 hover:text-slate-800 font-extrabold text-sm transition-colors border-l border-white/40"
+            onClick={() => {
+              const next = Math.min(200, fontSize + 1);
+              setLocalFontSize(String(next));
+              onFontSizeChange(next, true);
+            }}
+            className="px-2.5 h-full hover:bg-white/50 text-slate-500 hover:text-slate-800 font-extrabold text-sm transition-colors border-l border-white/40 cursor-pointer"
             type="button"
           >
             +
@@ -136,11 +172,14 @@ export default function TextFormatToolbar({
       <div className="relative group/tooltip">
         <button
           onClick={onCaseToggle}
-          className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm"
+          className="w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm cursor-pointer"
           type="button"
         >
           aA
         </button>
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+          Change Case
+        </span>
       </div>
 
       <div className="h-5 w-[1px] bg-slate-200/50" />
@@ -151,7 +190,7 @@ export default function TextFormatToolbar({
             const next = textAlign === 'center' ? 'left' : textAlign === 'left' ? 'right' : 'center';
             onAlignToggle(next);
           }}
-          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm"
+          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm cursor-pointer"
           type="button"
         >
           {textAlign === 'center' ? (
@@ -168,18 +207,24 @@ export default function TextFormatToolbar({
             </svg>
           )}
         </button>
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+          Align Text
+        </span>
       </div>
 
       <div className="relative group/tooltip">
         <button
           onClick={onListToggle}
-          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm"
+          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/40 border border-white/60 hover:bg-white/60 text-slate-700 transition-all shadow-sm cursor-pointer"
           type="button"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM3.75 12h.007v.008H3.75V12zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm-.375 5.25h.007v.008H3.75v-.008zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
           </svg>
         </button>
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+          Bullet List
+        </span>
       </div>
 
       <div className="relative group/tooltip">
@@ -188,7 +233,7 @@ export default function TextFormatToolbar({
             closeOtherPopovers('opacity');
             setShowOpacityPopover(!showOpacityPopover);
           }}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border cursor-pointer ${
             showOpacityPopover
               ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
               : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
@@ -199,6 +244,9 @@ export default function TextFormatToolbar({
             <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />
           </svg>
         </button>
+        <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+          Transparency
+        </span>
 
         {showOpacityPopover && (
           <>

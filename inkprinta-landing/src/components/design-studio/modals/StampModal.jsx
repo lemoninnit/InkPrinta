@@ -98,46 +98,39 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
 
   useEffect(() => {
     let active = true;
-    const fetchStickers = async () => {
+    const loadStickers = () => {
       setLoading(true);
-      try {
-        let targetUrl = '';
-        if (selectedCategory === 'trending' && !debouncedQuery) {
-          targetUrl = `https://api.mojilala.com/v1/stickers/trending?api_key=dc6zaTOxFJmzC&limit=24`;
-        } else {
-          const catObj = CATEGORIES.find((c) => c.id === selectedCategory);
-          const searchTerm = debouncedQuery || catObj?.query || selectedCategory;
-          targetUrl = `https://api.mojilala.com/v1/stickers/search?q=${encodeURIComponent(searchTerm)}&api_key=dc6zaTOxFJmzC&limit=24`;
-        }
+      const currentCat = (selectedCategory === 'search' || selectedCategory === 'trending') ? 'trending' : selectedCategory;
+      let list = FALLBACK_STICKERS[currentCat] || FALLBACK_STICKERS.trending;
 
-        // Fetching through AllOrigins CORS proxy to avoid cross-origin request blocking
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
-        const res = await fetch(proxyUrl);
-        const data = await res.json();
-
-        if (active) {
-          if (data && data.data && data.data.length > 0) {
-            setStickers(data.data);
-          } else {
-            // Use fallback stickers if API response is empty
-            const currentCat = selectedCategory === 'search' ? 'trending' : selectedCategory;
-            setStickers(FALLBACK_STICKERS[currentCat] || FALLBACK_STICKERS.trending);
+      if (debouncedQuery) {
+        const allStickers = Object.values(FALLBACK_STICKERS).flat();
+        const uniqueStickers = [];
+        const seen = new Set();
+        for (const item of allStickers) {
+          if (!seen.has(item.url)) {
+            seen.add(item.url);
+            uniqueStickers.push(item);
           }
         }
-      } catch (err) {
-        console.error('Failed to fetch stickers from MojiLaLa API, using Twemoji fallbacks:', err);
-        if (active) {
-          const currentCat = (selectedCategory === 'search' || selectedCategory === 'trending') ? 'trending' : selectedCategory;
-          setStickers(FALLBACK_STICKERS[currentCat] || FALLBACK_STICKERS.trending);
+
+        const q = debouncedQuery.toLowerCase();
+        list = uniqueStickers.filter(s => {
+          const cat = Object.keys(FALLBACK_STICKERS).find(k => FALLBACK_STICKERS[k].some(item => item.url === s.url));
+          return cat && cat.toLowerCase().includes(q);
+        });
+        if (list.length === 0) {
+          list = uniqueStickers.slice(0, 12);
         }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      }
+
+      if (active) {
+        setStickers(list);
+        setLoading(false);
       }
     };
 
-    fetchStickers();
+    loadStickers();
     return () => {
       active = false;
     };

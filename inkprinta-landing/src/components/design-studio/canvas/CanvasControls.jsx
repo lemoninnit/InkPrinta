@@ -54,72 +54,86 @@ export default function CanvasControls({
           className="z-35 flex items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-200 text-slate-700 rounded-full px-3 py-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.08)] whitespace-nowrap select-none animate-in fade-in zoom-in-95 duration-150"
         >
           {/* Lock/Unlock */}
-          <button
-            onClick={onToggleLock}
-            className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
-              isLocked
-                ? 'bg-cyan-50 border border-cyan-200 text-cyan-600 font-extrabold'
-                : 'hover:bg-slate-100 text-slate-500 hover:text-slate-800'
-            }`}
-            title={isLocked ? 'Unlock Object' : 'Lock Object'}
-            type="button"
-          >
-            {isLocked ? (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-              </svg>
-            )}
-          </button>
+          <div className="relative group/tooltip">
+            <button
+              onClick={onToggleLock}
+              className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                isLocked
+                  ? 'bg-cyan-50 border border-cyan-200 text-cyan-600 font-extrabold'
+                  : 'hover:bg-slate-100 text-slate-500 hover:text-slate-800'
+              }`}
+              type="button"
+            >
+              {isLocked ? (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+              )}
+            </button>
+            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+              {isLocked ? 'Unlock' : 'Lock'}
+            </span>
+          </div>
 
           <div className="w-[1px] h-3 bg-slate-200/80" />
 
           {/* Group / Ungroup Button */}
           {(isMultiple || isGroup || isEditingGroup) && (
             <>
-              <button
-                onClick={onGroup}
-                disabled={isLocked}
-                className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-                title={(isGroup || isEditingGroup) ? 'Ungroup Elements' : 'Group Elements'}
-                type="button"
-              >
-                {(isGroup || isEditingGroup) ? (
-                  <svg className="w-3.5 h-3.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M18 18V6H6v12h12zm0 2H6c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2z" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                    <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                    <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                    <path strokeDasharray="2 2" d="M3 14h3M18 10h3M10 3v3M14 18v3" />
-                  </svg>
-                )}
-              </button>
+              <div className="relative group/tooltip">
+                <button
+                  onClick={onGroup}
+                  disabled={isLocked}
+                  className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                  type="button"
+                >
+                  {(isGroup || isEditingGroup) ? (
+                    <svg className="w-3.5 h-3.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18V6H6v12h12zm0 2H6c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2h12c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                      <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                      <rect x="14" y="14" width="7" height="7" rx="1.5" />
+                      <path strokeDasharray="2 2" d="M3 14h3M18 10h3M10 3v3M14 18v3" />
+                    </svg>
+                  )}
+                </button>
+                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+                  {(isGroup || isEditingGroup) ? 'Ungroup' : 'Group'}
+                </span>
+              </div>
               <div className="w-[1px] h-3 bg-slate-200/80" />
             </>
           )}
 
           {/* Layer Controls Dropdown */}
           <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setShowLayerDropdown(!showLayerDropdown)}
-              disabled={isLocked}
-              className={`w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer ${
-                showLayerDropdown ? 'bg-slate-100 text-slate-800' : ''
-              }`}
-              title="Layers"
-              type="button"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4L3 8.5L12 13L21 8.5L12 4Z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12.5L12 17L21 12.5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5L12 21L21 16.5" />
-              </svg>
-            </button>
+            <div className="relative group/tooltip">
+              <button
+                onClick={() => setShowLayerDropdown(!showLayerDropdown)}
+                disabled={isLocked}
+                className={`w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer ${
+                  showLayerDropdown ? 'bg-slate-100 text-slate-800' : ''
+                }`}
+                type="button"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4L3 8.5L12 13L21 8.5L12 4Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12.5L12 17L21 12.5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5L12 21L21 16.5" />
+                </svg>
+              </button>
+              {!showLayerDropdown && (
+                <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+                  Layers
+                </span>
+              )}
+            </div>
 
             {/* Submenu Dropdown */}
             {showLayerDropdown && (
@@ -223,34 +237,42 @@ export default function CanvasControls({
           <div className="w-[1px] h-3 bg-slate-200/80" />
 
           {/* Duplicate */}
-          <button
-            onClick={onDuplicate}
-            disabled={isLocked}
-            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            title="Duplicate"
-            type="button"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2" />
-              <rect x="9" y="4" width="11" height="11" rx="2" ry="2" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.5h5m-2.5-2.5v5" />
-            </svg>
-          </button>
+          <div className="relative group/tooltip">
+            <button
+              onClick={onDuplicate}
+              disabled={isLocked}
+              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-slate-100 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              type="button"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2v-2" />
+                <rect x="9" y="4" width="11" height="11" rx="2" ry="2" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9.5h5m-2.5-2.5v5" />
+              </svg>
+            </button>
+            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+              Duplicate
+            </span>
+          </div>
 
           <div className="w-[1px] h-3 bg-slate-200/80" />
 
           {/* Delete */}
-          <button
-            onClick={onDelete}
-            disabled={isLocked}
-            className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50 text-red-500 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
-            title="Delete"
-            type="button"
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-            </svg>
-          </button>
+          <div className="relative group/tooltip">
+            <button
+              onClick={onDelete}
+              disabled={isLocked && !isMultiple}
+              className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-50 text-red-500 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+              type="button"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+              </svg>
+            </button>
+            <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
+              Delete
+            </span>
+          </div>
         </div>
       )}
 

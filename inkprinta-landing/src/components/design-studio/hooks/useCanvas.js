@@ -3,6 +3,7 @@ import { Canvas, Group } from 'fabric';
 import { EraserBrush } from '@erase2d/fabric';
 import { SNAP_THRESHOLD } from '../utils/constants.js';
 import { styleTextboxControls, drawSnapGuides, initializeImageObject } from '../utils/helpers.js';
+import { getDraftFromIndexedDB } from '../utils/db.js';
 
 export function useCanvas({
   canvasRef,
@@ -34,61 +35,127 @@ export function useCanvas({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    let isDisposed = false;
+
     const canvas = new Canvas(canvasRef.current, {
-      width: currentProduct.printWidth,
-      height: currentProduct.printHeight,
+      width: currentProduct.printWidth * zoom,
+      height: currentProduct.printHeight * zoom,
       backgroundColor: 'transparent',
       enableRetinaScaling: true,
       imageSmoothingEnabled: true
     });
 
+    canvas.printWidth = currentProduct.printWidth;
+    canvas.printHeight = currentProduct.printHeight;
+    canvas.setZoom(zoom);
+    canvas.calcOffset();
     fabricRef.current = canvas;
 
-    const savedDraft = localStorage.getItem('inkprinta_design_draft');
-    if (savedDraft) {
-      isHandlingHistoryRef.current = true;
-      try {
-        const parsed = JSON.parse(savedDraft);
-        const loadPromise = canvas.loadFromJSON(parsed);
-        const afterLoad = () => {
-          canvas.forEachObject((obj) => {
-            if (obj.type === 'textbox') {
-              styleTextboxControls(obj);
-            } else if (obj.type === 'image') {
-              initializeImageObject(obj);
+    const loadSavedDraft = async () => {
+      let savedDraft = await getDraftFromIndexedDB();
+      if (isDisposed) return;
+      if (!savedDraft) {
+        savedDraft = localStorage.getItem('inkprinta_design_draft');
+      }
+
+      if (savedDraft) {
+        isHandlingHistoryRef.current = true;
+        try {
+          const parsed = JSON.parse(savedDraft);
+          
+          let objects = [];
+          let draftWidth = currentProduct.printWidth;
+          let draftHeight = currentProduct.printHeight;
+          
+          if (parsed && Array.isArray(parsed.objects)) {
+            objects = parsed.objects;
+            if (parsed.printWidth && parsed.printHeight) {
+              draftWidth = parsed.printWidth;
+              draftHeight = parsed.printHeight;
             }
-            if (showPaintPanelRef.current) {
-              obj.selectable = false;
-              obj.evented = false;
-            } else {
-              if (obj.isPaintStroke) {
-                obj.selectable = true;
-                obj.evented = true;
-              } else {
-                const isObjLocked = obj.lockMovementX || false;
-                obj.selectable = !isObjLocked;
-                obj.evented = true;
+          } else if (parsed && Array.isArray(parsed)) {
+            objects = parsed;
+          } else if (parsed && parsed.objects) {
+            objects = parsed.objects;
+          }
+          
+          // Scale and re-center objects if the draft dimensions differ from the current product's dimensions
+          if (draftWidth !== currentProduct.printWidth || draftHeight !== currentProduct.printHeight) {
+            const oldWidth = draftWidth;
+            const oldHeight = draftHeight;
+            const newWidth = currentProduct.printWidth;
+            const newHeight = currentProduct.printHeight;
+
+            const scaleX = newWidth / oldWidth;
+            const scaleY = newHeight / oldHeight;
+            const scale = Math.min(scaleX, scaleY); // Uniform scale to preserve aspect ratio
+
+            const oldCenterX = oldWidth / 2;
+            const oldCenterY = oldHeight / 2;
+            const newCenterX = newWidth / 2;
+            const newCenterY = newHeight / 2;
+
+            objects.forEach((obj) => {
+              const dx = (obj.left || 0) - oldCenterX;
+              const dy = (obj.top || 0) - oldCenterY;
+              obj.left = newCenterX + dx * scale;
+              obj.top = newCenterY + dy * scale;
+              
+              obj.scaleX = (obj.scaleX || 1) * scale;
+              obj.scaleY = (obj.scaleY || 1) * scale;
+            });
+          }
+          
+          const fabricJson = {
+            objects: objects
+          };
+
+          const loadPromise = canvas.loadFromJSON(fabricJson);
+          const afterLoad = () => {
+            if (isDisposed) return;
+            canvas.forEachObject((obj) => {
+              if (obj.type === 'textbox') {
+                styleTextboxControls(obj);
+              } else if (obj.type === 'image') {
+                initializeImageObject(obj);
               }
-            }
-          });
-          canvas.renderAll();
+              if (showPaintPanelRef.current) {
+                obj.selectable = false;
+                obj.evented = false;
+              } else {
+                if (obj.isPaintStroke) {
+                  obj.selectable = true;
+                  obj.evented = true;
+                } else {
+                  const isObjLocked = obj.lockMovementX || false;
+                  obj.selectable = !isObjLocked;
+                  obj.evented = true;
+                }
+              }
+            });
+            canvas.renderAll();
+            isHandlingHistoryRef.current = false;
+            saveStateToHistory();
+          };
+
+          if (loadPromise && typeof loadPromise.then === 'function') {
+            loadPromise.then(afterLoad);
+          } else {
+            afterLoad();
+          }
+        } catch (err) {
+          if (isDisposed) return;
+          console.error('Failed to load design draft:', err);
           isHandlingHistoryRef.current = false;
           saveStateToHistory();
-        };
-
-        if (loadPromise && typeof loadPromise.then === 'function') {
-          loadPromise.then(afterLoad);
-        } else {
-          afterLoad();
         }
-      } catch (err) {
-        console.error('Failed to load design draft from localStorage:', err);
-        isHandlingHistoryRef.current = false;
+      } else {
+        if (isDisposed) return;
         saveStateToHistory();
       }
-    } else {
-      saveStateToHistory();
-    }
+    };
+
+    loadSavedDraft();
 
     canvas._editingGroup = null;
 
@@ -500,6 +567,7 @@ export function useCanvas({
     };
 
     const handleObjectRemoved = () => {
+      if (canvas.isBatchDeleting) return;
       if (!isHandlingHistoryRef.current) saveStateToHistory();
     };
 
@@ -542,16 +610,23 @@ export function useCanvas({
       }
     });
 
-    return () => {
-      canvas.dispose();
-      fabricRef.current = null;
-    };
-  }, [step]);
+      return () => {
+        isDisposed = true;
+        try {
+          canvas.dispose();
+        } catch (err) {
+          console.warn('Canvas disposal ignored:', err);
+        }
+        fabricRef.current = null;
+      };
+  }, [step, currentProduct]);
 
   useEffect(() => {
     if (!fabricRef.current) return;
 
     const canvas = fabricRef.current;
+    canvas.printWidth = currentProduct.printWidth;
+    canvas.printHeight = currentProduct.printHeight;
     canvas.setDimensions({
       width: currentProduct.printWidth * zoom,
       height: currentProduct.printHeight * zoom

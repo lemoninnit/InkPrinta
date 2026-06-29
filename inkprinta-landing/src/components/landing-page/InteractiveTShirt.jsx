@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, useGLTF, Float, Html, Center } from '@react-three/drei';
-import { useRef, useEffect, Suspense } from 'react';
+import { useRef, useEffect, useState, Suspense } from 'react';
 import * as THREE from 'three';
 
 function Loader() {
@@ -14,7 +14,7 @@ function Loader() {
   );
 }
 
-function TShirt() {
+function TShirt({ onReady, mouseRef }) {
   const { scene } = useGLTF('/tshirt.glb');
   const ref = useRef();
 
@@ -31,21 +31,29 @@ function TShirt() {
 
     scene.traverse((child) => {
       if (child.isMesh) {
-        child.castShadow = true;
-        child.receiveShadow = true;
         child.material = robustMaterial;
       }
     });
-  }, [scene]);
+
+    // Wait 100ms for Center component to calculate the model's bounding box and align it
+    const timer = setTimeout(() => {
+      onReady();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [scene, onReady]);
 
   useFrame((state, delta) => {
-    if (!ref.current || !document.hasFocus()) return;
+    if (!ref.current) return;
 
-    const targetY = (state.pointer.x * Math.PI) / 4;
-    const targetX = -(state.pointer.y * Math.PI) / 8;
+    // Clamp delta to prevent sudden rotation jumps on framerate drops
+    const clampedDelta = Math.min(delta, 0.1);
 
-    ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, targetY, 4 * delta);
-    ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, targetX, 4 * delta);
+    const targetY = (mouseRef.current.x * Math.PI) / 4;
+    const targetX = -(mouseRef.current.y * Math.PI) / 8;
+
+    ref.current.rotation.y = THREE.MathUtils.lerp(ref.current.rotation.y, targetY, 4 * clampedDelta);
+    ref.current.rotation.x = THREE.MathUtils.lerp(ref.current.rotation.x, targetX, 4 * clampedDelta);
   });
 
   return (
@@ -58,17 +66,41 @@ function TShirt() {
 }
 
 export default function InteractiveTShirt() {
+  const [isReady, setIsReady] = useState(false);
+  const mouseRef = useRef({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      mouseRef.current.x = (e.clientX / window.innerWidth) * 2 - 1;
+      mouseRef.current.y = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
+
   return (
-    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', zIndex: 50, cursor: 'grab' }}>
-      <Canvas dpr={[1, 2]} camera={{ position: [0, 0, 8.5], fov: 40 }} gl={{ antialias: true, alpha: true }}>
+    <div 
+      className="transition-opacity duration-700 ease-out"
+      style={{ 
+        position: 'absolute', 
+        top: 0, 
+        left: 0, 
+        width: '100%', 
+        height: '100%', 
+        zIndex: 50, 
+        cursor: 'grab',
+        opacity: isReady ? 1 : 0
+      }}
+    >
+      <Canvas dpr={[1, 1.5]} camera={{ position: [0, 0, 8.5], fov: 40 }} gl={{ antialias: true, alpha: true }}>
         <ambientLight intensity={1.5} />
-        <directionalLight position={[10, 10, 5]} intensity={2.5} color="#ffffff" castShadow />
+        <directionalLight position={[10, 10, 5]} intensity={2.5} color="#ffffff" />
         <directionalLight position={[-10, 5, -5]} intensity={1.5} color="#e0f2fe" />
 
         <Environment preset="city" />
 
         <Suspense fallback={<Loader />}>
-          <TShirt />
+          <TShirt onReady={() => setIsReady(true)} mouseRef={mouseRef} />
         </Suspense>
       </Canvas>
     </div>

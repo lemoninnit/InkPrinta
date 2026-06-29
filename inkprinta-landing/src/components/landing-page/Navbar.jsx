@@ -1,8 +1,14 @@
+import { motion } from 'framer-motion';
 import logo from '../../assets/images/inkprintalogo.jpg';
 
 export default function Navbar() {
   return (
-    <header className="w-full px-6 md:px-12 py-6 flex items-center justify-between bg-white relative z-50">
+    <motion.header 
+      initial={{ y: -50, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
+      className="w-full px-6 md:px-12 py-6 flex items-center justify-between bg-white relative z-50"
+    >
       <div className="flex items-center gap-3 cursor-pointer">
         <img
           src={logo}
@@ -39,6 +45,6 @@ export default function Navbar() {
           </svg>
         </button>
       </div>
-    </header>
+    </motion.header>
   );
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BorderGlow from './BorderGlow';
+import { jsPDF } from 'jspdf';
 
 const PRODUCT_MOCKUP_CONFIGS = {
   tshirt: {
@@ -40,25 +41,133 @@ const PRODUCT_MOCKUP_CONFIGS = {
 export default function OrderStep({ designImage, currentProduct, setStep, onClearCanvas }) {
   const config = PRODUCT_MOCKUP_CONFIGS[currentProduct.id] || PRODUCT_MOCKUP_CONFIGS.tshirt;
 
+  const [autoDownload, setAutoDownload] = useState(() => {
+    try {
+      const saved = localStorage.getItem('inkprinta_auto_download_pdf');
+      return saved !== 'false';
+    } catch (_) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('inkprinta_auto_download_pdf', autoDownload.toString());
+    } catch (_) {}
+  }, [autoDownload]);
+
+  const downloadDesignPDF = (designImageBase64, product, customerName) => {
+    if (!designImageBase64) return;
+    try {
+      const doc = new jsPDF({
+        orientation: product.printWidth > product.printHeight ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [product.printWidth, product.printHeight]
+      });
+
+      // Extract first name and sanitize it
+      let firstName = 'guest';
+      if (customerName && typeof customerName === 'string') {
+        const trimmed = customerName.trim();
+        if (trimmed) {
+          const firstWord = trimmed.split(/\s+/)[0];
+          firstName = firstWord.replace(/[\\\/:*?"<>|]/g, '');
+        }
+      }
+      if (!firstName) firstName = 'guest';
+
+      const fileName = `${firstName}_inkprinta_design.pdf`;
+
+      // Add image to cover the entire page dimensions
+      doc.addImage(designImageBase64, 'PNG', 0, 0, product.printWidth, product.printHeight);
+      doc.save(fileName);
+    } catch (err) {
+      console.error('Failed to export PDF:', err);
+    }
+  };
+
   // Step 1: Product & Quantity
-  const [size, setSize] = useState('M');
-  const [quantity, setQuantity] = useState(1);
+  const [size, setSize] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_size') || 'M';
+    } catch (_) {
+      return 'M';
+    }
+  });
+  const [quantity, setQuantity] = useState(() => {
+    try {
+      const val = localStorage.getItem('inkprinta_order_quantity');
+      return val ? Math.max(1, parseInt(val) || 1) : 1;
+    } catch (_) {
+      return 1;
+    }
+  });
   const price = config.price;
   const total = price * quantity;
 
   // Step 2: Customer Details & Suggestions
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [comments, setComments] = useState('');
-  const [deliveryMethod, setDeliveryMethod] = useState('pickup');
-  const [address, setAddress] = useState('');
+  const [fullName, setFullName] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_fullname') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [email, setEmail] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_email') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [phone, setPhone] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_phone') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [comments, setComments] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_comments') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+  const [deliveryMethod, setDeliveryMethod] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_delivery_method') || 'pickup';
+    } catch (_) {
+      return 'pickup';
+    }
+  });
+  const [address, setAddress] = useState(() => {
+    try {
+      return localStorage.getItem('inkprinta_order_address') || '';
+    } catch (_) {
+      return '';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('inkprinta_order_size', size);
+      localStorage.setItem('inkprinta_order_quantity', quantity.toString());
+      localStorage.setItem('inkprinta_order_fullname', fullName);
+      localStorage.setItem('inkprinta_order_email', email);
+      localStorage.setItem('inkprinta_order_phone', phone);
+      localStorage.setItem('inkprinta_order_comments', comments);
+      localStorage.setItem('inkprinta_order_delivery_method', deliveryMethod);
+      localStorage.setItem('inkprinta_order_address', address);
+    } catch (_) {}
+  }, [size, quantity, fullName, email, phone, comments, deliveryMethod, address]);
 
   // Field validation and touched states
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState(null);
   const [submitError, setSubmitError] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // Synchronous client-side validation
   const getValidationErrors = () => {
@@ -258,11 +367,11 @@ export default function OrderStep({ designImage, currentProduct, setStep, onClea
         localStorage.setItem('inkprinta_orders', JSON.stringify(existingOrders));
       }
 
-      // 4. Clear the canvas design draft
-      localStorage.removeItem('inkprinta_design_draft');
-      onClearCanvas?.();
-
       setSubmittedOrder(newOrder);
+
+      if (autoDownload && designImage) {
+        downloadDesignPDF(designImage, currentProduct, fullName);
+      }
     } catch (err) {
       console.error('Failed to submit order:', err);
       setSubmitError(err.message || 'An error occurred while placing your order. Please try again.');
@@ -324,10 +433,32 @@ export default function OrderStep({ designImage, currentProduct, setStep, onClea
             </div>
           </div>
 
+          {designImage && (
+            <button
+              onClick={() => downloadDesignPDF(designImage, currentProduct, submittedOrder.customerName)}
+              className="w-full py-4 mb-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-widest rounded-full shadow-md hover:shadow-cyan-200/50 transition-all duration-300 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+              type="button"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Download Design PDF
+            </button>
+          )}
+
           <button
             onClick={() => {
-              onClearCanvas?.();
               setStep('design');
+            }}
+            className="w-full py-4 mb-3.5 border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-black text-xs uppercase tracking-widest rounded-full shadow-sm transition-all duration-300 active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+            type="button"
+          >
+            Go back to design page
+          </button>
+
+          <button
+            onClick={() => {
+              setShowConfirmModal(true);
             }}
             className="w-full py-4 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-cyan-600 hover:to-cyan-500 text-white font-black text-xs uppercase tracking-widest rounded-full shadow-md hover:shadow-cyan-200/50 transition-all duration-300 active:scale-95 cursor-pointer"
             type="button"
@@ -335,6 +466,53 @@ export default function OrderStep({ designImage, currentProduct, setStep, onClea
             Design another garment
           </button>
         </div>
+
+        {/* Custom Confirmation Modal */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+              onClick={() => setShowConfirmModal(false)}
+            />
+            
+            {/* Modal Container */}
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-8 max-w-sm w-full shadow-[0_20px_60px_rgba(15,23,42,0.15)] flex flex-col items-center text-center relative z-10 animate-in fade-in zoom-in-95 duration-200">
+              {/* Warning Icon */}
+              <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-5 border border-amber-100/50">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              
+              <h3 className="text-base font-black text-slate-800 uppercase tracking-wider mb-3">Reset Design Studio?</h3>
+              <p className="text-xs text-slate-500 font-bold leading-relaxed mb-6">
+                Are you sure you want to design another garment? Your current design will be permanently removed.
+              </p>
+              
+              <div className="flex gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmModal(false)}
+                  className="flex-1 py-3 border border-slate-200 hover:border-slate-300 text-slate-700 bg-white hover:bg-slate-50 font-black text-[10px] uppercase tracking-widest rounded-full transition-all duration-300 active:scale-95 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowConfirmModal(false);
+                    onClearCanvas?.();
+                    setStep('design');
+                  }}
+                  className="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-700 hover:to-cyan-600 text-white font-black text-[10px] uppercase tracking-widest rounded-full shadow-md hover:shadow-cyan-200/50 transition-all duration-300 active:scale-95 cursor-pointer"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -685,6 +863,27 @@ export default function OrderStep({ designImage, currentProduct, setStep, onClea
                   <span>{submitError}</span>
                 </div>
               )}
+
+              {/* Automatic PDF Download Switch Toggle */}
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-700">Auto Download PDF</span>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider">Save design after order</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAutoDownload(!autoDownload)}
+                  className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-300 cursor-pointer outline-none relative ${
+                    autoDownload ? 'bg-cyan-500' : 'bg-slate-200'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-4 h-4 rounded-full shadow transition-transform duration-300 transform ${
+                      autoDownload ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
             </div>
           </BorderGlow>
 

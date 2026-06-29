@@ -63,6 +63,9 @@ export default function Footer({
 }) {
   return (
     <footer className="w-full bg-white/95 backdrop-blur-xl border-t border-slate-100 px-8 py-3.5 flex items-center justify-between relative shadow-[0_-8px_30px_rgba(0,0,0,0.02)] z-40">
+      {/* Left side empty space to balance the preview button on the right */}
+      <div className="w-[180px] flex-none hidden sm:block" />
+
       <div className="flex-1 flex justify-center items-center gap-6 md:gap-10">
         {STUDIO_TABS.map((tab) => {
           const isProduct = tab.id === 'Product';
@@ -86,11 +89,10 @@ export default function Footer({
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.90 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-              className={`flex flex-col items-center gap-1.5 py-2.5 px-6 rounded-2.5xl relative cursor-pointer group select-none ${
-                isHighlighted
+              className={`flex flex-col items-center gap-1.5 py-2.5 px-6 rounded-2.5xl relative cursor-pointer group select-none ${isHighlighted
                   ? 'text-cyan-600 font-bold'
                   : 'text-slate-400 hover:text-slate-700'
-              }`}
+                }`}
               type="button"
             >
               {/* Modern glassmorphic active tab indicator bubble with spring transition */}
@@ -108,7 +110,7 @@ export default function Footer({
               <span className={`text-[9px] font-black uppercase tracking-widest select-none transition-colors ${isHighlighted ? 'text-slate-800' : 'text-slate-400'}`}>
                 {tab.label}
               </span>
-              
+
               {isHighlighted && (
                 <motion.span
                   layoutId="activeTabIndicatorDot"
@@ -121,13 +123,13 @@ export default function Footer({
         })}
       </div>
 
-      <div className="flex-none pl-4">
+      <div className="w-[180px] flex-none flex justify-end">
         <button
           onClick={onPreview}
           className="px-8 py-3.5 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-cyan-600 hover:to-cyan-500 text-white rounded-full text-xs font-black shadow-md hover:shadow-cyan-100/50 hover:-translate-y-0.5 transition-all duration-300 uppercase tracking-widest active:translate-y-0 active:scale-95 cursor-pointer"
           type="button"
         >
-          Preview Design
+          Preview
         </button>
       </div>
     </footer>

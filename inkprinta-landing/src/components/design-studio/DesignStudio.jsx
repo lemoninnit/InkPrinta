@@ -22,6 +22,7 @@ import StampModal from './modals/StampModal.jsx';
 import LayersPanel from './modals/LayersPanel.jsx';
 import PreviewStep from './PreviewStep.jsx';
 import OrderStep from './OrderStep.jsx';
+import { removeDraftFromIndexedDB } from './utils/db.js';
 
 export default function DesignStudio() {
   const canvasRef = useRef(null);
@@ -69,6 +70,13 @@ export default function DesignStudio() {
       forceSaveToLocalStorage();
     }
   }, [currentProduct]);
+
+  const handleSelectProduct = (prod) => {
+    if (fabricRef.current) {
+      forceSaveToLocalStorage();
+    }
+    setCurrentProduct(prod);
+  };
 
   const handleEnterPreview = () => {
     if (fabricRef.current) {
@@ -420,25 +428,27 @@ export default function DesignStudio() {
   };
 
   const handleStartOver = () => {
-    if (!fabricRef.current) return;
-    const canvas = fabricRef.current;
-    canvas.discardActiveObject();
-    const objects = canvas.getObjects();
-    while (objects.length > 0) {
-      canvas.remove(objects[0]);
-    }
-    canvas.backgroundColor = 'transparent';
-    canvas.renderAll();
+    // Clear draft from localStorage and IndexedDB
+    localStorage.removeItem('inkprinta_design_draft');
+    removeDraftFromIndexedDB();
     
     // Completely clear history stacks to prevent restoring or saving old state
     undoStackRef.current = [];
     redoStackRef.current = [];
-    
-    // Clear draft from localStorage
-    localStorage.removeItem('inkprinta_design_draft');
-    
-    // Push the clean empty canvas state as the fresh initial state
-    saveStateToHistory(true);
+
+    if (fabricRef.current) {
+      const canvas = fabricRef.current;
+      canvas.discardActiveObject();
+      const objects = canvas.getObjects();
+      while (objects.length > 0) {
+        canvas.remove(objects[0]);
+      }
+      canvas.backgroundColor = 'transparent';
+      canvas.renderAll();
+      
+      // Push the clean empty canvas state as the fresh initial state
+      saveStateToHistory(true);
+    }
   };
 
 
@@ -627,7 +637,7 @@ export default function DesignStudio() {
         onClose={() => setShowProductPanel(false)}
         products={PRODUCTS}
         currentProduct={currentProduct}
-        onSelectProduct={setCurrentProduct}
+        onSelectProduct={handleSelectProduct}
       />
 
       <TextModal

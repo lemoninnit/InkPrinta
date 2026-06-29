@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { styleTextboxControls, initializeImageObject } from '../utils/helpers.js';
+import { saveDraftToIndexedDB } from '../utils/db.js';
 
 export function useHistory(fabricRef) {
   const undoStackRef = useRef([]);
@@ -21,19 +22,35 @@ export function useHistory(fabricRef) {
       saveTimeoutRef.current = null;
     }
     const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke', 'erasable']);
-    const jsonStr = JSON.stringify(json);
+    const payload = {
+      version: '1.0',
+      printWidth: fabricRef.current.printWidth || fabricRef.current.width,
+      printHeight: fabricRef.current.printHeight || fabricRef.current.height,
+      objects: json.objects
+    };
+    const jsonStr = JSON.stringify(payload);
+    
+    saveDraftToIndexedDB(jsonStr).then(() => {
+      setSaveStatus('saved');
+    });
+
     try {
       localStorage.setItem('inkprinta_design_draft', jsonStr);
-      setSaveStatus('saved');
     } catch (err) {
-      console.error('Failed to force-save design draft to localStorage:', err);
+      console.warn('LocalStorage backup draft size limit exceeded (draft saved to IndexedDB instead).');
     }
   };
 
   const saveStateToHistory = (force = false) => {
     if (!fabricRef.current || isHandlingHistoryRef.current) return;
     const json = fabricRef.current.toJSON(['rx', 'ry', 'isPaintStroke', 'erasable']);
-    const jsonStr = JSON.stringify(json);
+    const payload = {
+      version: '1.0',
+      printWidth: fabricRef.current.printWidth || fabricRef.current.width,
+      printHeight: fabricRef.current.printHeight || fabricRef.current.height,
+      objects: json.objects
+    };
+    const jsonStr = JSON.stringify(payload);
     if (undoStackRef.current.length > 0 && undoStackRef.current[undoStackRef.current.length - 1] === jsonStr) {
       return;
     }
@@ -51,20 +68,22 @@ export function useHistory(fabricRef) {
 
     if (force) {
       setSaveStatus('saved');
+      saveDraftToIndexedDB(jsonStr);
       try {
         localStorage.setItem('inkprinta_design_draft', jsonStr);
       } catch (err) {
-        console.error('Failed to force-save design draft to localStorage:', err);
+        console.warn('LocalStorage backup draft size limit exceeded (saved to IndexedDB).');
       }
     } else {
       setSaveStatus('saving');
       saveTimeoutRef.current = setTimeout(() => {
+        saveDraftToIndexedDB(jsonStr).then(() => {
+          setSaveStatus('saved');
+        });
         try {
           localStorage.setItem('inkprinta_design_draft', jsonStr);
-          setSaveStatus('saved');
         } catch (err) {
-          console.error('Failed to auto-save design draft to localStorage:', err);
-          setSaveStatus('saved');
+          console.warn('LocalStorage backup draft size limit exceeded (saved to IndexedDB).');
         }
       }, 500);
     }
@@ -75,7 +94,8 @@ export function useHistory(fabricRef) {
 
     isHandlingHistoryRef.current = true;
     const parsed = JSON.parse(stateJson);
-    const loadPromise = fabricRef.current.loadFromJSON(parsed);
+    const fabricJson = parsed.objects ? { objects: parsed.objects } : parsed;
+    const loadPromise = fabricRef.current.loadFromJSON(fabricJson);
 
     const afterLoad = () => {
       fabricRef.current.forEachObject((obj) => {

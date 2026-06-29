@@ -4,51 +4,90 @@ import { useDropzone } from 'react-dropzone';
 import { FabricImage } from 'fabric';
 import { initializeImageObject } from '../utils/helpers.js';
 
+const compressImage = (file, maxWidth = 2048, maxHeight = 2048, quality = 0.9) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const outputType = file.type === 'image/jpeg' ? 'image/jpeg' : 'image/png';
+        const compressedDataUrl = canvas.toDataURL(outputType, quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = (err) => reject(err);
+      img.src = e.target.result;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
+
 export default function ImageModal({ isOpen, onClose, fabricRef, onForceSave }) {
   const onDrop = useCallback((acceptedFiles) => {
     if (acceptedFiles && acceptedFiles.length > 0) {
       const file = acceptedFiles[0];
-      const objectUrl = URL.createObjectURL(file);
       
-      FabricImage.fromURL(objectUrl).then((fabricImage) => {
-        if (!fabricRef.current) return;
-        const canvas = fabricRef.current;
-        const zoom = canvas.getZoom();
-        const unzoomedWidth = canvas.width / zoom;
-        const unzoomedHeight = canvas.height / zoom;
+      compressImage(file).then((compressedDataUrl) => {
+        FabricImage.fromURL(compressedDataUrl).then((fabricImage) => {
+          if (!fabricRef.current) return;
+          const canvas = fabricRef.current;
+          const zoom = canvas.getZoom();
+          const unzoomedWidth = canvas.width / zoom;
+          const unzoomedHeight = canvas.height / zoom;
 
-        fabricImage.set({
-          left: unzoomedWidth / 2,
-          top: unzoomedHeight / 2,
-          originX: 'center',
-          originY: 'center',
+          fabricImage.set({
+            left: unzoomedWidth / 2,
+            top: unzoomedHeight / 2,
+            originX: 'center',
+            originY: 'center',
+          });
+          
+          // Scale to max 300x300 while keeping aspect ratio:
+          const maxW = 300;
+          const maxH = 300;
+          let scale = 1;
+          if (fabricImage.width > maxW || fabricImage.height > maxH) {
+            scale = Math.min(maxW / fabricImage.width, maxH / fabricImage.height);
+          }
+          fabricImage.set({
+            scaleX: scale,
+            scaleY: scale
+          });
+          
+          initializeImageObject(fabricImage);
+          
+          fabricRef.current.add(fabricImage);
+          fabricRef.current.setActiveObject(fabricImage);
+          fabricRef.current.renderAll();
+          onForceSave?.();
+          
+          // Close panel and clean up
+          onClose();
+        }).catch((err) => {
+          console.error('Failed to load image:', err);
         });
-        
-        // Scale to max 300x300 while keeping aspect ratio:
-        const maxW = 300;
-        const maxH = 300;
-        let scale = 1;
-        if (fabricImage.width > maxW || fabricImage.height > maxH) {
-          scale = Math.min(maxW / fabricImage.width, maxH / fabricImage.height);
-        }
-        fabricImage.set({
-          scaleX: scale,
-          scaleY: scale
-        });
-        
-        initializeImageObject(fabricImage);
-        
-        fabricRef.current.add(fabricImage);
-        fabricRef.current.setActiveObject(fabricImage);
-        fabricRef.current.renderAll();
-        onForceSave?.();
-        
-        // Close panel and clean up
-        onClose();
-        // Do not revoke objectURL immediately so that Undo/Redo can reload it from JSON
-        // URL.revokeObjectURL(objectUrl);
       }).catch((err) => {
-        console.error('Failed to load image:', err);
+        console.error('Failed to compress image:', err);
       });
     }
   }, [fabricRef, onClose, onForceSave]);
