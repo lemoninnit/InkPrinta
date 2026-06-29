@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FabricImage } from 'fabric';
 import { initializeImageObject } from '../utils/helpers.js';
@@ -389,7 +389,6 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
     if (searchResults.length === 0) {
       const allStickers = [
         ...POKEMON_STICKERS,
-        ...FALLBACK_STICKERS.trending,
         ...FALLBACK_STICKERS.emojis,
         ...FALLBACK_STICKERS.spongebob,
         ...FALLBACK_STICKERS.anime,
@@ -459,16 +458,22 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
         canvas.renderAll();
 
         saveStateToHistory(true);
-        onClose();
+        // Panel stays open so user can add more stickers
       })
       .catch((err) => {
         console.error('Failed to load stamp from URL:', err);
       });
   };
 
+  const scrollRef = useRef(null);
+
   const handleCategoryClick = (catId) => {
     setSelectedCategory(catId);
     setQuery('');
+    // Reset scroll position to top when switching categories
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
   };
 
   const isCurrentlyLoading = loading;
@@ -544,7 +549,7 @@ export default function StampModal({ isOpen, onClose, fabricRef, saveStateToHist
                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No stamps found</span>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-3 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
+              <div ref={scrollRef} className="grid grid-cols-3 gap-3 max-h-[320px] overflow-y-auto pr-1 scrollbar-thin">
                 {stickers.map((item) => {
                   if (!item.url) return null;
                   return (
