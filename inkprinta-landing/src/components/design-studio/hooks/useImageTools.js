@@ -182,10 +182,19 @@ export function useImageTools(fabricRef, saveStateToHistory) {
       selectable: false,
       evented: false
     });
-    
+
     if (fabricRef.current) {
-      fabricRef.current.discardActiveObject();
-      fabricRef.current.renderAll();
+      const canvas = fabricRef.current;
+      // If we're mid group-edit, don't discard (that would trigger
+      // commitGroupEditing via selection:cleared and re-wrap the target image
+      // back into the group before cropping finishes). Just clear Fabric's
+      // active object pointer directly without firing selection:cleared side effects.
+      if (canvas._editingGroup) {
+        canvas._activeObject = null;
+      } else {
+        canvas.discardActiveObject();
+      }
+      canvas.renderAll();
     }
   };
 

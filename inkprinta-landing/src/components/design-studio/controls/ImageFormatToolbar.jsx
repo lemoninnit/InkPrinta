@@ -57,11 +57,10 @@ export default function ImageFormatToolbar({
             setShowStrokePopover(!showStrokePopover);
           }}
           disabled={isCropping}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
-            showStrokePopover
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${showStrokePopover
               ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
               : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-          } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
+            } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
           type="button"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -80,33 +79,40 @@ export default function ImageFormatToolbar({
                 <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Border Style</span>
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
-                    { id: 'none', label: 'None', component: (
-                      <span className="text-xs font-black">Ø</span>
-                    ) },
-                    { id: 'solid', label: 'Solid', component: (
-                      <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
-                        <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" />
-                      </svg>
-                    ) },
-                    { id: 'dashed-large', label: 'Dashed (Large Gaps)', component: (
-                      <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
-                        <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" strokeDasharray="8, 6" />
-                      </svg>
-                    ) },
-                    { id: 'dashed-small', label: 'Dashed (Small Gaps)', component: (
-                      <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
-                        <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" strokeDasharray="3, 3" />
-                      </svg>
-                    ) }
+                    {
+                      id: 'none', label: 'None', component: (
+                        <span className="text-xs font-black">Ø</span>
+                      )
+                    },
+                    {
+                      id: 'solid', label: 'Solid', component: (
+                        <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
+                          <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" />
+                        </svg>
+                      )
+                    },
+                    {
+                      id: 'dashed-large', label: 'Dashed (Large Gaps)', component: (
+                        <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
+                          <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" strokeDasharray="8, 6" />
+                        </svg>
+                      )
+                    },
+                    {
+                      id: 'dashed-small', label: 'Dashed (Small Gaps)', component: (
+                        <svg className="w-8 h-2" viewBox="0 0 32 8" fill="none">
+                          <line x1="0" y1="4" x2="32" y2="4" stroke="currentColor" strokeWidth="2.5" strokeDasharray="3, 3" />
+                        </svg>
+                      )
+                    }
                   ].map((style) => (
                     <button
                       key={style.id}
                       onClick={() => onStrokeTypeChange(style.id)}
-                      className={`h-8 rounded-lg flex items-center justify-center border transition-all ${
-                        strokeType === style.id
+                      className={`h-8 rounded-lg flex items-center justify-center border transition-all ${strokeType === style.id
                           ? 'border-cyan-500 bg-cyan-500/10 text-cyan-600 shadow-sm'
                           : 'border-slate-200 hover:border-slate-300 text-slate-500 hover:text-slate-800 bg-white/50'
-                      }`}
+                        }`}
                       type="button"
                       title={style.label}
                     >
@@ -157,11 +163,10 @@ export default function ImageFormatToolbar({
                           key={color}
                           onClick={() => onStrokeColorChange(color)}
                           style={{ backgroundColor: color }}
-                          className={`w-6 h-6 rounded-full border transition-all ${
-                            strokeColor === color
+                          className={`w-6 h-6 rounded-full border transition-all ${strokeColor === color
                               ? 'scale-110 shadow-md ring-2 ring-cyan-500 ring-offset-2'
                               : 'border-slate-300 hover:scale-105'
-                          }`}
+                            }`}
                           type="button"
                         />
                       ))}
@@ -182,11 +187,10 @@ export default function ImageFormatToolbar({
             setShowCornerPopover(!showCornerPopover);
           }}
           disabled={isCropping}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
-            showCornerPopover
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${showCornerPopover
               ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
               : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-          } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
+            } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
           type="button"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -248,11 +252,10 @@ export default function ImageFormatToolbar({
               onStartCropping(activeObject);
             }
           }}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
-            isCropping
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${isCropping
               ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
               : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-          }`}
+            }`}
           type="button"
         >
           {isCropping ? (
@@ -286,11 +289,10 @@ export default function ImageFormatToolbar({
                     <button
                       key={r.id}
                       onClick={() => setAspectRatio(r.id)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                        aspectRatio === r.id
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${aspectRatio === r.id
                           ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/40 shadow-sm'
                           : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
-                      }`}
+                        }`}
                       type="button"
                     >
                       {r.label}
@@ -330,16 +332,15 @@ export default function ImageFormatToolbar({
           <button
             onClick={onFlipX}
             disabled={isCropping}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-              flipX
+            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${flipX
                 ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
                 : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-            } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
+              } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
             type="button"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 8.25L18.75 12 15 15.75m-6-7.5L5.25 12l3.75 3.75" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 12h13.5" />
             </svg>
           </button>
           <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
@@ -351,16 +352,15 @@ export default function ImageFormatToolbar({
           <button
             onClick={onFlipY}
             disabled={isCropping}
-            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${
-              flipY
+            className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all shadow-sm ${flipY
                 ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
                 : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-            } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
+              } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
             type="button"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 8.25L18.75 12 15 15.75m-6-7.5L5.25 12l3.75 3.75" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 12h13.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 5.25v13.5" />
             </svg>
           </button>
           <span className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2.5 py-1 bg-slate-800 text-[10px] text-white font-extrabold rounded-lg shadow-md opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity duration-150 whitespace-nowrap uppercase tracking-wider z-50">
@@ -379,11 +379,10 @@ export default function ImageFormatToolbar({
             setShowOpacityPopover(!showOpacityPopover);
           }}
           disabled={isCropping}
-          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${
-            showOpacityPopover
+          className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all shadow-sm border ${showOpacityPopover
               ? 'bg-cyan-500/10 text-cyan-600 border-cyan-500/30'
               : 'bg-white/40 border-white/60 hover:bg-white/60 text-slate-700'
-          } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
+            } ${isCropping ? 'opacity-40 pointer-events-none' : ''}`}
           type="button"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

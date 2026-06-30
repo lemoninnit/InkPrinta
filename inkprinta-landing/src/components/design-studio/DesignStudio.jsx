@@ -82,7 +82,7 @@ export default function DesignStudio() {
     if (fabricRef.current) {
       fabricRef.current.discardActiveObject();
       fabricRef.current.renderAll();
-      
+
       // Force save the current design state to localStorage immediately
       forceSaveToLocalStorage();
 
@@ -99,7 +99,7 @@ export default function DesignStudio() {
     setShowPaintPanel(false);
     setShowStampPanel(false);
     setShowLayersPanel(false);
-    
+
     setStep('preview');
   };
 
@@ -431,7 +431,7 @@ export default function DesignStudio() {
     // Clear draft from localStorage and IndexedDB
     localStorage.removeItem('inkprinta_design_draft');
     removeDraftFromIndexedDB();
-    
+
     // Completely clear history stacks to prevent restoring or saving old state
     undoStackRef.current = [];
     redoStackRef.current = [];
@@ -445,7 +445,7 @@ export default function DesignStudio() {
       }
       canvas.backgroundColor = 'transparent';
       canvas.renderAll();
-      
+
       // Push the clean empty canvas state as the fresh initial state
       saveStateToHistory(true);
     }
@@ -486,67 +486,111 @@ export default function DesignStudio() {
   useEffect(() => {
     if (!fabricRef.current) return;
     const canvas = fabricRef.current;
-    canvas.isDrawingMode = showPaintPanel;
-    canvas.selection = !showPaintPanel;
 
-    if (showPaintPanel) {
-      canvas.discardActiveObject();
-      canvas.calcOffset();
-      canvas.renderAll();
-
-      canvas.forEachObject((obj) => {
-        obj.selectable = false;
-        obj.evented = false;
-      });
-
-      if (activeTool === 'brush') {
-        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PaintbrushBrush)) {
-          canvas.freeDrawingBrush = new PaintbrushBrush(canvas);
+    const switchBrush = async () => {
+      if (canvas.freeDrawingBrush instanceof EraserBrush) {
+        try {
+          await canvas.freeDrawingBrush.commit();
+        } catch (e) {
+          // no pending erase to commit, ignore
         }
-        canvas.freeDrawingBrush.color = brushColor;
-        canvas.freeDrawingBrush.width = brushSize;
-        canvas.freeDrawingBrush.opacity = brushOpacity;
-      } else if (activeTool === 'eraser') {
-        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof EraserBrush)) {
-          const eraser = new EraserBrush(canvas);
-          const originalCommit = eraser.commit.bind(eraser);
-          eraser.commit = async (...args) => {
-            const result = await originalCommit(...args);
-            if (!isHandlingHistoryRef.current) {
-              saveStateToHistory();
-            }
-            return result;
-          };
-          eraser.on('end', () => {
-            if (!isHandlingHistoryRef.current) {
-              saveStateToHistory();
-            }
-          });
-          canvas.freeDrawingBrush = eraser;
-        }
-        canvas.freeDrawingBrush.width = brushSize;
-      } else {
-        if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof PencilBrush)) {
-          canvas.freeDrawingBrush = new PencilBrush(canvas);
-        }
-        canvas.freeDrawingBrush.color = hexToRgba(brushColor, brushOpacity);
-        canvas.freeDrawingBrush.width = brushSize;
       }
-    } else {
-      canvas.forEachObject((obj) => {
-        if (obj.isPaintStroke) {
-          obj.selectable = true;
-          obj.evented = true;
-        } else {
-          const isObjLocked = obj.lockMovementX || false;
-          obj.selectable = !isObjLocked;
-          obj.evented = true;
-        }
-      });
-      canvas.renderAll();
-    }
-  }, [showPaintPanel, activeTool, brushColor, brushSize, brushOpacity]);
 
+      canvas.isDrawingMode = showPaintPanel;
+      canvas.selection = !showPaintPanel;
+
+      if (showPaintPanel) {
+        canvas.discardActiveObject();
+        canvas.calcOffset();
+        canvas.renderAll();
+
+        canvas.forEachObject((obj) => {
+          obj.selectable = false;
+          obj.evented = false;
+        });
+
+        if (activeTool === 'brush') {
+          const isRealPaintbrush = canvas.freeDrawingBrush instanceof PaintbrushBrush
+            && !(canvas.freeDrawingBrush instanceof EraserBrush);
+          if (!canvas.freeDrawingBrush || !isRealPaintbrush) {
+            canvas.freeDrawingBrush = new PaintbrushBrush(canvas);
+          }
+          canvas.freeDrawingBrush.color = brushColor;
+          canvas.freeDrawingBrush.width = brushSize;
+          canvas.freeDrawingBrush.opacity = brushOpacity;
+        } else if (activeTool === 'eraser') {
+          if (!canvas.freeDrawingBrush || !(canvas.freeDrawingBrush instanceof EraserBrush)) {
+            const eraser = new EraserBrush(canvas);
+            const originalCommit = eraser.commit.bind(eraser);
+            eraser.commit = async (...args) => {
+              const result = await originalCommit(...args);
+              const active = canvas.getActiveObject();
+              if (active) {
+                const stillExists = canvas.contains(active);
+                const bounds = stillExists ? active.getBoundingRect() : null;
+                const isEffectivelyEmpty = !stillExists || (bounds && bounds.width < 1 && bounds.height < 1);
+                if (isEffectivelyEmpty) {
+                  canvas.discardActiveObject();
+                  textTools.setActiveObject(null);
+                  textTools.setCoords(null);
+                  imageTools.resetPopovers();
+                }
+              }
+              canvas.requestRenderAll();
+              if (!isHandlingHistoryRef.current) {
+                saveStateToHistory();
+              }
+              return result;
+            };
+            eraser.on('end', () => {
+              const active = canvas.getActiveObject();
+              if (active) {
+                const stillExists = canvas.contains(active);
+                const bounds = stillExists ? active.getBoundingRect() : null;
+                const isEffectivelyEmpty = !stillExists || (bounds && bounds.width < 1 && bounds.height < 1);
+                if (isEffectivelyEmpty) {
+                  canvas.discardActiveObject();
+                  textTools.setActiveObject(null);
+                  textTools.setCoords(null);
+                  imageTools.resetPopovers();
+                  canvas.requestRenderAll();
+                }
+              }
+              if (!isHandlingHistoryRef.current) {
+                saveStateToHistory();
+              }
+            });
+            canvas.freeDrawingBrush = eraser;
+          }
+          canvas.freeDrawingBrush.width = brushSize;
+        } else {
+          const isRealPencil = canvas.freeDrawingBrush instanceof PencilBrush
+            && !(canvas.freeDrawingBrush instanceof EraserBrush);
+          if (!canvas.freeDrawingBrush || !isRealPencil) {
+            canvas.freeDrawingBrush = new PencilBrush(canvas);
+          }
+          canvas.freeDrawingBrush.color = hexToRgba(brushColor, brushOpacity);
+          canvas.freeDrawingBrush.width = brushSize;
+          canvas.isDrawingMode = true;
+          canvas.renderAll();
+        }
+      } else {
+        canvas.forEachObject((obj) => {
+          if (obj.isPaintStroke) {
+            obj.selectable = true;
+            obj.evented = true;
+          } else {
+            const isObjLocked = obj.lockMovementX || false;
+            obj.selectable = !isObjLocked;
+            obj.evented = true;
+          }
+        });
+        canvas.renderAll();
+      }
+    };
+
+    switchBrush();
+  }, [showPaintPanel, activeTool, brushColor, brushSize, brushOpacity]);
 
 
   return (

@@ -62,11 +62,11 @@ export function useCanvas({
         isHandlingHistoryRef.current = true;
         try {
           const parsed = JSON.parse(savedDraft);
-          
+
           let objects = [];
           let draftWidth = currentProduct.printWidth;
           let draftHeight = currentProduct.printHeight;
-          
+
           if (parsed && Array.isArray(parsed.objects)) {
             objects = parsed.objects;
             if (parsed.printWidth && parsed.printHeight) {
@@ -78,7 +78,7 @@ export function useCanvas({
           } else if (parsed && parsed.objects) {
             objects = parsed.objects;
           }
-          
+
           // Scale and re-center objects if the draft dimensions differ from the current product's dimensions
           if (draftWidth !== currentProduct.printWidth || draftHeight !== currentProduct.printHeight) {
             const oldWidth = draftWidth;
@@ -100,12 +100,12 @@ export function useCanvas({
               const dy = (obj.top || 0) - oldCenterY;
               obj.left = newCenterX + dx * scale;
               obj.top = newCenterY + dy * scale;
-              
+
               obj.scaleX = (obj.scaleX || 1) * scale;
               obj.scaleY = (obj.scaleY || 1) * scale;
             });
           }
-          
+
           const fabricJson = {
             objects: objects
           };
@@ -158,7 +158,6 @@ export function useCanvas({
     loadSavedDraft();
 
     canvas._editingGroup = null;
-
     canvas.selectGroupChild = (group, child) => {
       if (canvas._editingGroup) {
         canvas.commitGroupEditing();
@@ -208,14 +207,14 @@ export function useCanvas({
         canvas.add(group);
         canvas.setActiveObject(group);
         canvas.requestRenderAll();
-        
+
         saveStateToHistory();
       }
     };
 
     const updateSelection = () => {
       const activeObj = canvas.getActiveObject();
-      
+
       if (canvas._editingGroup) {
         const { originalObjects } = canvas._editingGroup;
         if (!activeObj || !originalObjects.includes(activeObj)) {
@@ -287,6 +286,8 @@ export function useCanvas({
       }
     };
 
+    const DOUBLE_CLICK_THRESHOLD_MS = 350;
+
     const handleMouseDown = (e) => {
       const activeObj = canvas.getActiveObject();
       if (activeObj) {
@@ -299,15 +300,34 @@ export function useCanvas({
       if (e.target && e.target.type === 'group') {
         const group = e.target;
         const clickedChild = e.subTargets && e.subTargets[0];
+        const now = Date.now();
+
         if (clickedChild) {
-          if (canvas._lastSelectedGroup === group) {
+          const isSameGroupRecentClick =
+            canvas._lastClickedGroup === group &&
+            canvas._lastClickTime &&
+            now - canvas._lastClickTime < DOUBLE_CLICK_THRESHOLD_MS;
+
+          if (isSameGroupRecentClick) {
+            // Genuine double-click: enter the group and select just this child
             canvas.selectGroupChild(group, clickedChild);
+            canvas._lastClickedGroup = null;
+            canvas._lastClickTime = 0;
           } else {
-            canvas._lastSelectedGroup = group;
+            // First click (or click on a different group): select the WHOLE group,
+            // don't move/select the individual child yet - matches Canva behavior
+            if (canvas._editingGroup) {
+              canvas.commitGroupEditing();
+            }
+            canvas.setActiveObject(group);
+            canvas.requestRenderAll();
+            canvas._lastClickedGroup = group;
+            canvas._lastClickTime = now;
           }
         }
       } else {
-        canvas._lastSelectedGroup = null;
+        canvas._lastClickedGroup = null;
+        canvas._lastClickTime = 0;
       }
     };
 
@@ -584,6 +604,20 @@ export function useCanvas({
     canvas.on('object:added', handleObjectAdded);
     canvas.on('object:removed', handleObjectRemoved);
     canvas.on('erasing:end', () => {
+      const active = canvas.getActiveObject();
+      if (active) {
+        const stillExists = canvas.contains(active);
+        const bounds = stillExists ? active.getBoundingRect() : null;
+        const isEffectivelyEmpty = !stillExists || (bounds && bounds.width < 1 && bounds.height < 1);
+        if (isEffectivelyEmpty) {
+          canvas.discardActiveObject();
+          setActiveObject(null);
+          setCoords(null);
+          setIsLocked(false);
+          setIsRotating(false);
+          canvas.requestRenderAll();
+        }
+      }
       if (!isHandlingHistoryRef.current) {
         saveStateToHistory(true);
       }
@@ -610,15 +644,15 @@ export function useCanvas({
       }
     });
 
-      return () => {
-        isDisposed = true;
-        try {
-          canvas.dispose();
-        } catch (err) {
-          console.warn('Canvas disposal ignored:', err);
-        }
-        fabricRef.current = null;
-      };
+    return () => {
+      isDisposed = true;
+      try {
+        canvas.dispose();
+      } catch (err) {
+        console.warn('Canvas disposal ignored:', err);
+      }
+      fabricRef.current = null;
+    };
   }, [step, currentProduct]);
 
   useEffect(() => {

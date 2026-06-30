@@ -579,14 +579,15 @@ export default function OrderStep({ designImage, currentProduct, setStep, onClea
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      overflow: 'hidden'
+                      overflow: 'hidden',
+                      zIndex: 30
                     }}
                   >
                     {designImage && (
                       <img
                         src={designImage}
                         alt="Design Print"
-                        className="w-full h-full object-cover mix-blend-multiply opacity-90 pointer-events-none"
+                        className="w-full h-full object-contain pointer-events-none opacity-95"
                       />
                     )}
                   </div>
